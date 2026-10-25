@@ -3,7 +3,7 @@
 ; Requires Inno Setup 6.4+ for WebView2 download helper
 
 #define MyAppName "Al-Tayebat Inventory"
-#define MyAppVersion "2.1.0"
+#define MyAppVersion "2.2.0"
 #define MyAppPublisher "Al-Tayebat"
 #define MyAppExeName "AlTayebatInventorySystem.exe"
 #define PublishDir "..\dist\app"
@@ -60,7 +60,15 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
+; Phones/tablets on the same Wi-Fi open the app through its built-in server. Allow it during setup so the
+; Windows Firewall prompt can't block it — private/domain networks only, never public Wi-Fi.
+; (All data still requires signing in.)
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""{#MyAppName}"""; Flags: runhidden waituntilterminated
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""{#MyAppName}"" dir=in action=allow program=""{app}\{#MyAppExeName}"" enable=yes profile=private,domain"; Flags: runhidden waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch Al-Tayebat Inventory"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""{#MyAppName}"""; Flags: runhidden; RunOnceId: "DelFirewallRule"
 
 [Code]
 function IsWebView2RuntimeInstalled: Boolean;

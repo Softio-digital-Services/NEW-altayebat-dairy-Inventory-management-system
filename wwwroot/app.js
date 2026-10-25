@@ -171,7 +171,7 @@ const T = {
         rep_profit_before_expenses: 'Profit (before expenses)', rep_profit_after_expenses: 'Profit (after expenses)',
         lic_type: 'Type', lic_customer: 'Customer', lic_expires: 'Expires', lic_days: 'Days left',
         lic_valid: 'Valid', lic_invalid: 'Invalid', lic_trial: 'Trial', lic_machine: 'Machine',
-        tb_tools: 'Tools',
+        tb_tools: 'Tools', session_expired: 'Please sign in again',
         export: 'Export', tool_notif: 'Notifications', tool_lock: 'Lock', tool_calc: 'Calculator',
         refresh: 'Refresh', add_category: 'Add Category', add_customer: 'Add Customer',
         add_supplier: 'Add Supplier', add_user: 'Add User', add_currency: 'Add Currency',
@@ -567,7 +567,7 @@ const T = {
         rep_profit_before_expenses: 'الربح (قبل المصروفات)', rep_profit_after_expenses: 'الربح (بعد المصروفات)',
         lic_type: 'النوع', lic_customer: 'العميل', lic_expires: 'ينتهي', lic_days: 'الأيام المتبقية',
         lic_valid: 'صالح', lic_invalid: 'غير صالح', lic_trial: 'تجريبي', lic_machine: 'الجهاز',
-        tb_tools: 'أدوات',
+        tb_tools: 'أدوات', session_expired: 'يرجى تسجيل الدخول مرة أخرى',
         export: 'تصدير', tool_notif: 'الإشعارات', tool_lock: 'قفل', tool_calc: 'آلة حاسبة',
         refresh: 'تحديث', add_category: 'إضافة فئة', add_customer: 'إضافة عميل',
         add_supplier: 'إضافة مورد', add_user: 'إضافة مستخدم', add_currency: 'إضافة عملة',
@@ -1451,7 +1451,8 @@ async function downloadServerExport(path, fallbackName, onFallback) {
     try {
         // Exports follow the app language: Arabic headers/values and right-to-left sheets
         path += (path.includes('?') ? '&' : '?') + 'lang=' + encodeURIComponent(lang);
-        const res = await fetch(API + path, { credentials: 'same-origin' });
+        const res = await fetch(API + path, { credentials: 'same-origin', headers: authHeaders() });
+        if (res.status === 401) { handleSessionExpired(); return; }
         if (!res.ok) {
             if (res.status === 404 && typeof onFallback === 'function') {
                 onFallback();
@@ -1748,8 +1749,24 @@ function toast(msg, type = '') {
     setTimeout(() => el.classList.remove('show'), 2800);
 }
 
+// Login token from /api/login, sent with every data request (the server refuses data without it)
+function authHeaders(extra = {}) {
+    return { ...extra, 'X-Auth-Token': (currentUser && currentUser.token) || '' };
+}
+
+// Server restarted or the token is unknown: back to the sign-in screen once.
+function handleSessionExpired() {
+    if (!currentUser) return;
+    hideApp();
+    toast(tr('session_expired'), 'error');
+}
+
 async function api(path, opts = {}) {
-    const res = await fetch(API + path, { headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) }, ...opts });
+    const res = await fetch(API + path, { ...opts, headers: authHeaders({ 'Content-Type': 'application/json', ...(opts.headers || {}) }) });
+    if (res.status === 401 && path !== '/api/login') {
+        handleSessionExpired();
+        throw new Error(tr('session_expired'));
+    }
     if (!res.ok) {
         let err = res.statusText;
         try { const j = await res.json(); err = j.error || j.title || j.detail || err; } catch {}
@@ -2281,7 +2298,7 @@ async function loadConnectInfo() {
             qr.classList.remove('is-error');
             if (!qr.getAttribute('src')) qr.src = QR_PLACEHOLDER;
             try {
-                const res = await fetch(API + '/api/connect/qr?t=' + Date.now());
+                const res = await fetch(API + '/api/connect/qr?t=' + Date.now(), { headers: authHeaders() });
                 if (!res.ok) throw new Error('qr ' + res.status);
                 const blob = await res.blob();
                 if (!blob || !blob.type.startsWith('image/')) throw new Error('not image');
@@ -5396,7 +5413,7 @@ function generateAutoSku() {
 async function uploadProductImage(file) {
     const fd = new FormData();
     fd.append('file', file);
-    const res = await fetch(API + '/api/products/upload-image', { method: 'POST', body: fd });
+    const res = await fetch(API + '/api/products/upload-image', { method: 'POST', body: fd, headers: authHeaders() });
     if (!res.ok) {
         let err = res.statusText;
         try { const j = await res.json(); err = j.error || j.title || err; } catch {}
@@ -7407,7 +7424,11 @@ function setupAuth() {
             if (btn) btn.disabled = false;
         }
     });
-    document.getElementById('btn-logout').onclick = () => hideApp();
+    document.getElementById('btn-logout').onclick = () => {
+        // Tell the server to forget this login, then show the sign-in screen
+        fetch(API + '/api/logout', { method: 'POST', headers: authHeaders() }).catch(() => {});
+        hideApp();
+    };
 }
 
 function setupActions() {
@@ -8713,7 +8734,7 @@ function setupTools() {
     });
     document.getElementById('btn-backup-export')?.addEventListener('click', async () => {
         try {
-            const res = await fetch(API + '/api/backup/export');
+            const res = await fetch(API + '/api/backup/export', { headers: authHeaders() });
             if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
             const blob = await res.blob();
             const cd = res.headers.get('Content-Disposition') || '';
@@ -8739,7 +8760,7 @@ function setupTools() {
         try {
             const fd = new FormData();
             fd.append('file', file);
-            const res = await fetch(API + '/api/backup/import', { method: 'POST', body: fd });
+            const res = await fetch(API + '/api/backup/import', { method: 'POST', body: fd, headers: authHeaders() });
             if (!res.ok) {
                 let err = res.statusText;
                 try { const j = await res.json(); err = j.error || j.title || err; } catch {}
@@ -9367,7 +9388,7 @@ const scaleManager = {
         try {
             const res = await fetch('/api/scale/resolve-barcode', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: authHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ barcode: code })
             });
             if (res.status === 404) {

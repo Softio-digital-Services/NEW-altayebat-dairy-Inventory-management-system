@@ -541,6 +541,24 @@ namespace InventorySystem
 
                 app.UseCors();
 
+                // Every data request needs the login token (header X-Auth-Token); only the sign-in
+                // screen, branding and licence addresses are open. Static files and the live-update
+                // hub carry no data and stay open.
+                app.Use(async (ctx, next) =>
+                {
+                    string path = ctx.Request.Path.Value ?? "";
+                    if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase)
+                        && !Microsoft.AspNetCore.Http.HttpMethods.IsOptions(ctx.Request.Method)
+                        && !WebSessions.IsPublicPath(path)
+                        && !WebSessions.IsValid(ctx.Request.Headers["X-Auth-Token"].ToString()))
+                    {
+                        ctx.Response.StatusCode = 401;
+                        await Microsoft.AspNetCore.Http.HttpResponseJsonExtensions.WriteAsJsonAsync(ctx.Response, new { error = "login_required" });
+                        return;
+                    }
+                    await next();
+                });
+
                 // Camera requires HTTPS OR the Chrome Flag (chrome://flags/#unsafely-treat-insecure-origin-as-secure)
                 // We'll allow both HTTP and HTTPS to co-exist for easier access
                 // if (!builder.Environment.IsDevelopment()) { app.UseHsts(); }
@@ -886,6 +904,12 @@ namespace InventorySystem
                 });
 
                 // - Login (POST) -
+                app.MapPost("/api/logout", (Microsoft.AspNetCore.Http.HttpRequest request) =>
+                {
+                    WebSessions.Revoke(request.Headers["X-Auth-Token"].ToString());
+                    return Microsoft.AspNetCore.Http.Results.Ok(new { success = true });
+                });
+
                 app.MapPost("/api/login", async (Microsoft.AspNetCore.Http.HttpRequest request) =>
                 {
                     try
@@ -901,6 +925,7 @@ namespace InventorySystem
                         if (body.Username == "Softio.Admin" && body.Password == "Softio@2026!")
                             return Microsoft.AspNetCore.Http.Results.Ok(new
                             {
+                                token = WebSessions.Issue("Softio.Admin"),
                                 username = "Softio.Admin",
                                 role = "Admin",
                                 fullName = "Softio Super Admin",
@@ -928,6 +953,7 @@ namespace InventorySystem
                         bool isSoftio = username.Equals("Softio.Admin", StringComparison.OrdinalIgnoreCase);
                         return Microsoft.AspNetCore.Http.Results.Ok(new
                         {
+                            token = WebSessions.Issue(username),
                             username,
                             role = role,
                             fullName = row["full_name"].ToString(),

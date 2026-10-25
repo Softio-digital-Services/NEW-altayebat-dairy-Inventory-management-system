@@ -2457,10 +2457,10 @@
     <value>عميل زائر</value>
   </data>
   <data name="QuotePreview_CompanyInfo" xml:space="preserve">
-    <value>جناح - طريق الرحاب | بيروت - لبنان | هاتف: +961 76 117731</value>
+    <value>الطريق العام - خربة روحا - البقاع الغربي - لبنان | هاتف: +961 78 956 388</value>
   </data>
   <data name="QuotePreview_ContactFooter" xml:space="preserve">
-    <value>هاتف: +961 76 117731  |  بريد: contact@otarji.com  |  موقع: www.otarji.com</value>
+    <value>هاتف: +961 78 956 388</value>
   </data>
   <data name="QuotePreview_MetaLine" xml:space="preserve">
     <value>عرض سعر #: {0}   |   التاريخ: {1}   |   رقم العميل: {2}   |   الصلاحية: {3}</value>
