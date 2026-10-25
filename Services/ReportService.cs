@@ -274,6 +274,49 @@ namespace InventorySystem.Services
                 new SqliteParameter("@to", toDate.Date.ToString("yyyy-MM-dd")));
         }
 
+        /// <summary>Raw milk per deliverer in the period: deliveries, liters, average price, paid / unpaid.</summary>
+        public DataTable GetMilkSupplierBreakdown(DateTime fromDate, DateTime toDate)
+        {
+            return DatabaseHelper.ExecuteDataTable(@"
+                SELECT
+                    COALESCE(e.supplier_id, 0) AS supplier_id,
+                    COALESCE(s.supplier_name, 'Unassigned / Walk-in') AS supplier_name,
+                    COUNT(*) AS delivery_count,
+                    COALESCE(SUM(e.liters), 0) AS total_liters,
+                    CASE WHEN SUM(e.liters) > 0 THEN SUM(e.amount) / SUM(e.liters) ELSE 0 END AS avg_unit_price,
+                    COALESCE(SUM(e.amount), 0) AS total_amount,
+                    COALESCE(SUM(CASE WHEN e.is_paid = 1 THEN e.amount ELSE 0 END), 0) AS total_paid,
+                    COALESCE(SUM(CASE WHEN e.is_paid = 0 THEN e.amount ELSE 0 END), 0) AS total_unpaid
+                FROM expenses e
+                LEFT JOIN suppliers s ON s.id = e.supplier_id
+                WHERE date(e.expense_date) BETWEEN date(@from) AND date(@to)
+                  AND e.date_deleted IS NULL
+                  AND (e.category = 'Raw Milk' OR (e.liters IS NOT NULL AND e.liters > 0))
+                GROUP BY e.supplier_id, s.supplier_name
+                ORDER BY total_amount DESC",
+                new SqliteParameter("@from", fromDate.Date.ToString("yyyy-MM-dd")),
+                new SqliteParameter("@to", toDate.Date.ToString("yyyy-MM-dd")));
+        }
+
+        /// <summary>Expenses per category in the period: entries, total, paid, unpaid.</summary>
+        public DataTable GetExpenseCategoryBreakdown(DateTime fromDate, DateTime toDate)
+        {
+            return DatabaseHelper.ExecuteDataTable(@"
+                SELECT
+                    category,
+                    COUNT(*) AS expense_count,
+                    COALESCE(SUM(amount), 0) AS total_amount,
+                    COALESCE(SUM(CASE WHEN is_paid = 1 THEN amount ELSE 0 END), 0) AS paid_amount,
+                    COALESCE(SUM(CASE WHEN is_paid = 0 THEN amount ELSE 0 END), 0) AS unpaid_amount
+                FROM expenses
+                WHERE date(expense_date) BETWEEN date(@from) AND date(@to)
+                  AND date_deleted IS NULL
+                GROUP BY category
+                ORDER BY total_amount DESC",
+                new SqliteParameter("@from", fromDate.Date.ToString("yyyy-MM-dd")),
+                new SqliteParameter("@to", toDate.Date.ToString("yyyy-MM-dd")));
+        }
+
         /// <summary>Sales and expenses per day (or per month for ranges longer than 62 days), empty periods filled with 0.</summary>
         public System.Collections.Generic.List<object> GetTrend(DateTime fromDate, DateTime toDate)
         {

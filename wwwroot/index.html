@@ -145,44 +145,59 @@
 </head>
 <body>
     <header id="titlebar" class="titlebar">
+        <!-- Home + Back: the most used, so they are labelled pills; the rest is grouped into menus -->
         <div class="titlebar-nav" id="titlebar-nav" hidden>
-            <button type="button" class="tb-btn tb-nav-btn" id="btn-nav-home" data-i18n-title="nav_home" title="Home">
-                <span class="material-symbols-rounded tb-icon" aria-hidden="true">home</span>
+            <button type="button" class="tb-pill tb-pill-home" id="btn-nav-home" data-i18n-title="nav_home" title="Home">
+                <span class="material-symbols-rounded" aria-hidden="true">home</span>
+                <span class="tb-pill-label" data-i18n="nav_home">Home</span>
             </button>
-            <button type="button" class="tb-btn tb-nav-btn" id="btn-nav-back" data-i18n-title="back" title="Back">
-                <span class="material-symbols-rounded tb-icon tb-back-icon" aria-hidden="true">arrow_back</span>
+            <button type="button" class="tb-pill tb-pill-back" id="btn-nav-back" data-i18n-title="back" title="Back">
+                <span class="material-symbols-rounded tb-back-icon" aria-hidden="true">arrow_back</span>
+                <span class="tb-pill-label" data-i18n="back">Back</span>
             </button>
+            <span class="tb-divider" aria-hidden="true"></span>
             <span class="tb-title" id="tb-title"></span>
         </div>
         <div class="titlebar-drag" id="titlebar-drag"></div>
         <div class="titlebar-tools" id="titlebar-tools" hidden>
-            <button type="button" class="tb-btn" id="btn-notif" title="Notifications">
+            <button type="button" class="tb-btn" id="btn-notif" data-i18n-title="tool_notif" title="Notifications">
                 <span class="material-symbols-rounded tb-icon" aria-hidden="true">notifications</span>
                 <span class="tb-badge" id="notif-badge" hidden>0</span>
             </button>
             <button type="button" class="tb-btn" id="btn-lock" title="Lock" data-i18n-title="tool_lock">
                 <span class="material-symbols-rounded tb-icon" aria-hidden="true">lock</span>
             </button>
-            <button type="button" class="tb-btn" id="btn-calc" title="Calculator" data-i18n-title="tool_calc">
-                <span class="material-symbols-rounded tb-icon" aria-hidden="true">calculate</span>
-            </button>
-            <button type="button" class="tb-btn" id="btn-backup" title="Backup" data-i18n-title="tool_backup">
-                <span class="material-symbols-rounded tb-icon" aria-hidden="true">cloud_upload</span>
-            </button>
-            <button type="button" class="tb-btn" id="btn-about" title="About" data-i18n-title="tool_about">
-                <span class="material-symbols-rounded tb-icon" aria-hidden="true">info</span>
-            </button>
-            <button type="button" class="tb-btn tb-lang-btn" id="btn-lang" data-i18n-title="language" title="Language">
-                <span class="material-symbols-rounded tb-icon" aria-hidden="true">language</span>
-                <span class="tb-lang-label" id="lang-label">العربية</span>
-            </button>
-            <div class="tb-user" id="tb-user-chip">
-                <span class="material-symbols-rounded tb-icon" aria-hidden="true">person</span>
-                <span id="tb-user-name">—</span>
+            <div class="tb-menu-wrap">
+                <button type="button" class="tb-btn tb-menu-btn" id="btn-tools-menu" aria-haspopup="true" aria-expanded="false" data-i18n-title="tb_tools" title="Tools">
+                    <span class="material-symbols-rounded tb-icon" aria-hidden="true">apps</span>
+                </button>
+                <div class="tb-menu" role="menu" hidden>
+                    <button type="button" class="tb-menu-item" id="btn-calc" role="menuitem">
+                        <span class="material-symbols-rounded" aria-hidden="true">calculate</span><span data-i18n="tool_calc">Calculator</span>
+                    </button>
+                    <button type="button" class="tb-menu-item" id="btn-backup" role="menuitem">
+                        <span class="material-symbols-rounded" aria-hidden="true">cloud_upload</span><span data-i18n="tool_backup">Backup</span>
+                    </button>
+                    <button type="button" class="tb-menu-item" id="btn-about" role="menuitem">
+                        <span class="material-symbols-rounded" aria-hidden="true">info</span><span data-i18n="tool_about">About</span>
+                    </button>
+                </div>
             </div>
-            <button type="button" class="tb-btn" id="btn-logout" data-i18n-title="logout" title="Logout">
-                <span class="material-symbols-rounded tb-icon" aria-hidden="true">logout</span>
-            </button>
+            <div class="tb-menu-wrap">
+                <button type="button" class="tb-user tb-menu-btn" id="tb-user-chip" aria-haspopup="true" aria-expanded="false">
+                    <span class="material-symbols-rounded tb-icon" aria-hidden="true">account_circle</span>
+                    <span id="tb-user-name">—</span>
+                    <span class="material-symbols-rounded tb-caret" aria-hidden="true">expand_more</span>
+                </button>
+                <div class="tb-menu" role="menu" hidden>
+                    <button type="button" class="tb-menu-item" id="btn-lang" role="menuitem">
+                        <span class="material-symbols-rounded" aria-hidden="true">language</span><span id="lang-label">العربية</span>
+                    </button>
+                    <button type="button" class="tb-menu-item tb-menu-danger" id="btn-logout" role="menuitem">
+                        <span class="material-symbols-rounded" aria-hidden="true">logout</span><span data-i18n="logout">Logout</span>
+                    </button>
+                </div>
+            </div>
         </div>
         <div class="window-controls">
             <button type="button" class="win-btn" id="win-min" title="Minimize"><span class="material-symbols-rounded">remove</span></button>
@@ -864,6 +879,7 @@
                             <span data-i18n="milk_show_finished">Show fully used</span>
                         </label>
                         <button class="btn btn-refresh" id="btn-refresh-milk"><span class="material-symbols-rounded">refresh</span><span data-i18n="refresh">Refresh</span></button>
+                        <button class="btn btn-secondary btn-export" id="btn-export-milk"><span class="material-symbols-rounded">upload</span><span data-i18n="export">Export</span></button>
                     </div>
                 </div>
                 <div class="milk-intake-grid" id="milk-intakes-body"></div>

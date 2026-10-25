@@ -251,6 +251,9 @@ namespace InventorySystem
         /// Writes every export workbook to Data/test-exports and prints the resulting column widths
         /// so clipped columns can be spotted without opening Excel.
         /// </summary>
+        private static System.Collections.Generic.List<(string Sheet, System.Data.DataTable Table)> Single(System.Data.DataTable dt) =>
+            new() { (dt.TableName, dt) };
+
         private static int RunExportSmokeTest()
         {
             try
@@ -263,45 +266,136 @@ namespace InventorySystem
                 Directory.CreateDirectory(exportDir);
 
                 var reportRange = new ReportService().GetPresetRange("Yearly");
-                var sets = new (string Name, System.Data.DataTable Table)[]
-                {
-                    ("products", CsvImportExportService.BuildProductsExportTable()),
-                    ("customers", CsvImportExportService.BuildCustomersExportTable()),
-                    ("suppliers", CsvImportExportService.BuildSuppliersExportTable()),
-                    ("expenses", CsvImportExportService.BuildExpensesExportTable()),
-                    ("sales", CsvImportExportService.BuildSalesExportTable()),
-                    ("history", CsvImportExportService.BuildHistoryExportTable()),
-                    ("report-summary", CsvImportExportService.BuildReportSummaryExportTable(
-                        new ReportService().GetSummary(reportRange.from, reportRange.to))),
-                    ("report-products", CsvImportExportService.BuildReportProductsExportTable(
-                        reportRange.from, reportRange.to))
-                };
+                var log = new System.Text.StringBuilder();
+                void Log(string line) { Console.WriteLine(line); log.AppendLine(line); }
 
-                foreach (var (name, table) in sets)
+                // Every web export, in both languages, written as the browser would receive it.
+                foreach (string lang in new[] { "en", "ar" })
                 {
-                    byte[] bytes = ImportExportHelper.ExportDataTableToXlsx(table, name);
-                    string path = Path.Combine(exportDir, name + ".xlsx");
-                    File.WriteAllBytes(path, bytes);
-                    Console.WriteLine($"[{name}] rows={table.Rows.Count} cols={table.Columns.Count} -> {path}");
-
-                    using var wb = new ClosedXML.Excel.XLWorkbook(path);
-                    var ws = wb.Worksheet(1);
-                    for (int c = 1; c <= table.Columns.Count; c++)
+                    bool ar = lang == "ar";
+                    var workbooks = new (string Name, System.Collections.Generic.List<(string Sheet, System.Data.DataTable Table)> Sheets)[]
                     {
-                        string header = table.Columns[c - 1].ColumnName;
-                        int longest = header.Length;
-                        foreach (System.Data.DataRow row in table.Rows)
+                        ("products", Single(CsvImportExportService.BuildProductsExportTable(true, lang))),
+                        ("customers", Single(CsvImportExportService.BuildCustomersExportTable(lang))),
+                        ("suppliers", Single(CsvImportExportService.BuildSuppliersExportTable(lang))),
+                        ("expenses", Single(CsvImportExportService.BuildExpensesExportTable(null, lang))),
+                        ("sales", Single(CsvImportExportService.BuildSalesExportTable(null, null, lang))),
+                        ("history-all", Single(CsvImportExportService.BuildHistoryExportTable("all", lang))),
+                        ("history-inventory", Single(CsvImportExportService.BuildHistoryExportTable("inventory", lang))),
+                        ("history-customers", Single(CsvImportExportService.BuildHistoryExportTable("customers", lang))),
+                        ("history-suppliers", Single(CsvImportExportService.BuildHistoryExportTable("suppliers", lang))),
+                        ("history-quotations", Single(CsvImportExportService.BuildHistoryExportTable("quotations", lang))),
+                        ("report", CsvImportExportService.BuildReportExportTables(reportRange.from, reportRange.to, lang)),
+                        ("milk", CsvImportExportService.BuildMilkExportTables(true, "all", "", lang)),
+                    };
+
+                    foreach (var (name, sheets) in workbooks)
+                    {
+                        byte[] bytes = ImportExportHelper.ExportTablesToXlsx(sheets, rightToLeft: ar);
+                        string path = Path.Combine(exportDir, $"{name}.{lang}.xlsx");
+                        File.WriteAllBytes(path, bytes);
+                        Log($"[{name}.{lang}] -> {path}");
+
+                        using var wb = new ClosedXML.Excel.XLWorkbook(path);
+                        foreach (var ws in wb.Worksheets)
                         {
-                            int len = (row[c - 1]?.ToString() ?? "").Trim().Length;
-                            if (len > longest) longest = len;
+                            var used = ws.RangeUsed();
+                            int cols = used?.ColumnCount() ?? 0, rows = used?.RowCount() ?? 0;
+                            Log($"  sheet '{ws.Name}' rtl={ws.RightToLeft} rows={Math.Max(0, rows - 1)} cols={cols} frozen={ws.SheetView.SplitRow}");
+                            var headers = new System.Collections.Generic.List<string>();
+                            var sample = new System.Collections.Generic.List<string>();
+                            for (int c = 1; c <= cols; c++)
+                            {
+                                headers.Add(ws.Cell(1, c).GetString());
+                                sample.Add(rows > 1 ? ws.Cell(2, c).GetFormattedString() : "");
+                            }
+                            Log("    headers: " + string.Join(" | ", headers));
+                            Log("    row 1:   " + string.Join(" | ", sample));
                         }
-                        string fmt = ws.Cell(2, c).Style.NumberFormat.Format;
-                        Console.WriteLine($"    {header,-24} longest={longest,4} width={ws.Column(c).Width,5:0.0}" +
-                            (string.IsNullOrEmpty(fmt) ? "" : $"  fmt={fmt}"));
                     }
                 }
+                // Round trip: an Arabic export must normalize to exactly the same data as the English one
+                // (what the importers read), so files in either language import identically.
+                int roundTripFailures = 0;
+                var pairs = new (string Kind, Func<string, System.Data.DataTable> Build)[]
+                {
+                    ("products", l => CsvImportExportService.BuildProductsExportTable(true, l)),
+                    ("customers", l => CsvImportExportService.BuildCustomersExportTable(l)),
+                    ("suppliers", l => CsvImportExportService.BuildSuppliersExportTable(l)),
+                    ("expenses", l => CsvImportExportService.BuildExpensesExportTable(null, l)),
+                    ("sales", l => CsvImportExportService.BuildSalesExportTable(null, null, l)),
+                    ("history", l => CsvImportExportService.BuildHistoryExportTable("all", l)),
+                };
+                foreach (var (kind, build) in pairs)
+                {
+                    var en = build("en");
+                    var ar = build("ar");
+                    int mismatches = 0;
+                    string first = "";
+                    for (int r = 0; r < en.Rows.Count; r++)
+                    {
+                        var a = ExportLocalizer.NormalizeRow(CsvImportExportService.RowFromDataRow(ar.Rows[r]), kind);
+                        var e = ExportLocalizer.NormalizeRow(CsvImportExportService.RowFromDataRow(en.Rows[r]), kind);
+                        foreach (var kv in e)
+                        {
+                            if (string.Equals(kv.Key, "stock_display", StringComparison.OrdinalIgnoreCase)) continue;
+                            a.TryGetValue(kv.Key, out var av);
+                            if (!string.Equals(av ?? "", kv.Value ?? "", StringComparison.Ordinal))
+                            {
+                                mismatches++;
+                                if (first.Length == 0) first = $"row {r + 1} {kv.Key}: en='{kv.Value}' ar->'{av}'";
+                            }
+                        }
+                    }
+                    Log($"round trip {kind}: {(mismatches == 0 ? "OK" : "FAIL " + mismatches + " — " + first)} ({en.Rows.Count} rows)");
+                    if (mismatches > 0) roundTripFailures++;
+                }
+                // Filters: the exports must contain exactly what the page would list.
+                {
+                    var allSales = CsvImportExportService.BuildSalesExportTable(null, null, "en");
+                    string day = allSales.Rows.Count > 0 ? Convert.ToDateTime(allSales.Rows[0]["Date"]).ToString("yyyy-MM-dd") : DateTime.Today.ToString("yyyy-MM-dd");
+                    var daySales = CsvImportExportService.BuildSalesExportTable(day, day, "en");
+                    int expectDay = allSales.Rows.Cast<System.Data.DataRow>().Count(r => Convert.ToDateTime(r["Date"]).ToString("yyyy-MM-dd") == day);
+                    bool salesOk = daySales.Rows.Count == expectDay;
+                    Log($"filter sales {day}..{day}: {daySales.Rows.Count} of {allSales.Rows.Count} (expected {expectDay}) {(salesOk ? "OK" : "FAIL")}");
 
-                return 0;
+                    var someIds = DatabaseHelper.ExecuteDataTable("SELECT expense_id FROM expenses WHERE date_deleted IS NULL AND category != 'System' ORDER BY expense_id LIMIT 3");
+                    string ids = string.Join(",", someIds.Rows.Cast<System.Data.DataRow>().Select(r => r[0].ToString()));
+                    var someExp = CsvImportExportService.BuildExpensesExportTable(ids, "en");
+                    bool expOk = someExp.Rows.Count == someIds.Rows.Count;
+                    Log($"filter expenses ids={ids}: {someExp.Rows.Count} rows {(expOk ? "OK" : "FAIL")}");
+
+                    var milk = CsvImportExportService.BuildMilkExportTables(true, "Cow Milk", "", "en")[0].Table;
+                    bool milkOk = milk.Rows.Cast<System.Data.DataRow>().All(r => r["Milk Type"].ToString() == "Cow Milk");
+                    var milkAll = CsvImportExportService.BuildMilkExportTables(true, "all", "", "en")[0].Table;
+                    Log($"filter milk type=Cow Milk: {milk.Rows.Count} of {milkAll.Rows.Count}, all cow {(milkOk ? "OK" : "FAIL")}");
+
+                    if (!salesOk) roundTripFailures++;
+                    if (!expOk) roundTripFailures++;
+                    if (!milkOk) roundTripFailures++;
+                }
+
+                // For the web import check: the labels the browser fetches, and Arabic CSV exports.
+                var coded = new System.Collections.Generic.Dictionary<string, string[]>();
+                foreach (var k in ExportLocalizer.Kinds.Keys) coded[k] = ExportLocalizer.CodedColumns(k).ToArray();
+                File.WriteAllText(Path.Combine(exportDir, "export-labels.json"),
+                    System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        headers = ExportLocalizer.HeaderAliases(),
+                        values = ExportLocalizer.ValueAliases(),
+                        coded
+                    }, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)),
+                    System.Text.Encoding.UTF8);
+                foreach (var (kind, build) in pairs)
+                    File.WriteAllBytes(Path.Combine(exportDir, $"{kind}.ar.csv"), ImportExportHelper.ExportDataTableToCsvBytes(build("ar")));
+
+                foreach (string dup in ExportLocalizer.DuplicateArabicValues())
+                {
+                    Log("duplicate Arabic value (breaks import): " + dup);
+                    roundTripFailures++;
+                }
+                File.WriteAllText(Path.Combine(exportDir, "export-smoke.txt"), log.ToString(), System.Text.Encoding.UTF8);
+                return roundTripFailures == 0 ? 0 : 3;
             }
             catch (Exception ex)
             {
@@ -1675,43 +1769,9 @@ namespace InventorySystem
                             (fromDate, toDate) = svc.GetPresetRange(string.IsNullOrWhiteSpace(preset) ? "Monthly" : preset);
                         }
 
-                        string fStr = fromDate.ToString("yyyy-MM-dd");
-                        string tStr = toDate.ToString("yyyy-MM-dd");
-
-                        var dtSuppliers = DatabaseHelper.ExecuteDataTable(@"
-                            SELECT 
-                                COALESCE(e.supplier_id, 0) AS supplier_id,
-                                COALESCE(s.supplier_name, 'Unassigned / Walk-in') AS supplier_name,
-                                COUNT(*) AS delivery_count,
-                                COALESCE(SUM(e.liters), 0) AS total_liters,
-                                CASE WHEN SUM(e.liters) > 0 THEN SUM(e.amount) / SUM(e.liters) ELSE 0 END AS avg_unit_price,
-                                COALESCE(SUM(e.amount), 0) AS total_amount,
-                                COALESCE(SUM(CASE WHEN e.is_paid = 1 THEN e.amount ELSE 0 END), 0) AS total_paid,
-                                COALESCE(SUM(CASE WHEN e.is_paid = 0 THEN e.amount ELSE 0 END), 0) AS total_unpaid
-                            FROM expenses e
-                            LEFT JOIN suppliers s ON s.id = e.supplier_id
-                            WHERE date(e.expense_date) BETWEEN date(@from) AND date(@to)
-                              AND e.date_deleted IS NULL
-                              AND (e.category = 'Raw Milk' OR (e.liters IS NOT NULL AND e.liters > 0))
-                            GROUP BY e.supplier_id, s.supplier_name
-                            ORDER BY total_amount DESC",
-                            new Microsoft.Data.Sqlite.SqliteParameter("@from", fStr),
-                            new Microsoft.Data.Sqlite.SqliteParameter("@to", tStr));
-
-                        var dtCategories = DatabaseHelper.ExecuteDataTable(@"
-                            SELECT 
-                                category,
-                                COUNT(*) AS expense_count,
-                                COALESCE(SUM(amount), 0) AS total_amount,
-                                COALESCE(SUM(CASE WHEN is_paid = 1 THEN amount ELSE 0 END), 0) AS paid_amount,
-                                COALESCE(SUM(CASE WHEN is_paid = 0 THEN amount ELSE 0 END), 0) AS unpaid_amount
-                            FROM expenses
-                            WHERE date(expense_date) BETWEEN date(@from) AND date(@to)
-                              AND date_deleted IS NULL
-                            GROUP BY category
-                            ORDER BY total_amount DESC",
-                            new Microsoft.Data.Sqlite.SqliteParameter("@from", fStr),
-                            new Microsoft.Data.Sqlite.SqliteParameter("@to", tStr));
+                        // Shared with the Reports Excel export
+                        var dtSuppliers = svc.GetMilkSupplierBreakdown(fromDate, toDate);
+                        var dtCategories = svc.GetExpenseCategoryBreakdown(fromDate, toDate);
 
                         return Microsoft.AspNetCore.Http.Results.Ok(new
                         {
@@ -2383,151 +2443,121 @@ namespace InventorySystem
                 });
 
                 // - Bulk CSV import (products, customers, suppliers, expenses) -
-                app.MapGet("/api/products/export", (string format, string includeInactive) =>
+                // - Excel / CSV exports -
+                // Every export follows the web app language (?lang=ar|en): headers, coded values and
+                // sheet names are translated and Arabic workbooks read right-to-left.
+                static Microsoft.AspNetCore.Http.IResult ExportFile(
+                    string format, string lang, string baseName,
+                    System.Collections.Generic.List<(string Sheet, System.Data.DataTable Table)> sheets)
+                {
+                    bool ar = ExportLocalizer.IsArabic(lang);
+                    string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                    if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var bytes = ImportExportHelper.ExportDataTableToCsvBytes(sheets.Count > 0 ? sheets[0].Table : null);
+                        return Microsoft.AspNetCore.Http.Results.File(bytes, "text/csv", $"{baseName}_{stamp}.csv");
+                    }
+                    var xlsx = ImportExportHelper.ExportTablesToXlsx(sheets, rightToLeft: ar);
+                    return Microsoft.AspNetCore.Http.Results.File(xlsx,
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        $"{baseName}_{stamp}.xlsx");
+                }
+
+                static System.Collections.Generic.List<(string, System.Data.DataTable)> One(System.Data.DataTable dt) =>
+                    new() { (dt.TableName, dt) };
+
+                app.MapGet("/api/products/export", (string format, string includeInactive, string lang) =>
                 {
                     try
                     {
-                        bool showInactive = string.Equals(includeInactive, "1", StringComparison.OrdinalIgnoreCase)
+                        bool showInactive = string.IsNullOrEmpty(includeInactive)
+                            || string.Equals(includeInactive, "1", StringComparison.OrdinalIgnoreCase)
                             || string.Equals(includeInactive, "true", StringComparison.OrdinalIgnoreCase);
-                        var dt = CsvImportExportService.BuildProductsExportTable(showInactive);
-                        string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
-                        {
-                            var bytes = ImportExportHelper.ExportDataTableToCsvBytes(dt);
-                            return Microsoft.AspNetCore.Http.Results.File(bytes, "text/csv", $"inventory_{stamp}.csv");
-                        }
-                        var xlsx = ImportExportHelper.ExportDataTableToXlsx(dt, "Inventory");
-                        return Microsoft.AspNetCore.Http.Results.File(xlsx,
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            $"inventory_{stamp}.xlsx");
+                        return ExportFile(format, lang, "inventory", One(CsvImportExportService.BuildProductsExportTable(showInactive, lang)));
                     }
                     catch (Exception ex) { return Microsoft.AspNetCore.Http.Results.Problem(ex.Message); }
                 });
 
-                app.MapGet("/api/customers/export", (string format) =>
+                app.MapGet("/api/customers/export", (string format, string lang) =>
+                {
+                    try { return ExportFile(format, lang, "customers", One(CsvImportExportService.BuildCustomersExportTable(lang))); }
+                    catch (Exception ex) { return Microsoft.AspNetCore.Http.Results.Problem(ex.Message); }
+                });
+
+                app.MapGet("/api/suppliers/export", (string format, string lang) =>
+                {
+                    try { return ExportFile(format, lang, "suppliers", One(CsvImportExportService.BuildSuppliersExportTable(lang))); }
+                    catch (Exception ex) { return Microsoft.AspNetCore.Http.Results.Problem(ex.Message); }
+                });
+
+                // ids = the expenses currently listed on the page (its filters)
+                app.MapGet("/api/expenses/export", (string format, string lang, string ids) =>
+                {
+                    try { return ExportFile(format, lang, "expenses", One(CsvImportExportService.BuildExpensesExportTable(ids, lang))); }
+                    catch (Exception ex) { return Microsoft.AspNetCore.Http.Results.Problem(ex.Message); }
+                });
+
+                // from / to = the Sales page's date range
+                app.MapGet("/api/sales/export", (string format, string lang, string from, string to) =>
+                {
+                    try { return ExportFile(format, lang, "sales", One(CsvImportExportService.BuildSalesExportTable(from, to, lang))); }
+                    catch (Exception ex) { return Microsoft.AspNetCore.Http.Results.Problem(ex.Message); }
+                });
+
+                // kind = the History page's selected type
+                app.MapGet("/api/history/export", (string format, string lang, string kind) =>
                 {
                     try
                     {
-                        var dt = CsvImportExportService.BuildCustomersExportTable();
-                        string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
-                        {
-                            var bytes = ImportExportHelper.ExportDataTableToCsvBytes(dt);
-                            return Microsoft.AspNetCore.Http.Results.File(bytes, "text/csv", $"customers_{stamp}.csv");
-                        }
-                        var xlsx = ImportExportHelper.ExportDataTableToXlsx(dt, "Customers");
-                        return Microsoft.AspNetCore.Http.Results.File(xlsx,
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            $"customers_{stamp}.xlsx");
+                        string k = string.IsNullOrWhiteSpace(kind) ? "all" : kind.Trim();
+                        return ExportFile(format, lang, "history_" + k, One(CsvImportExportService.BuildHistoryExportTable(k, lang)));
                     }
                     catch (Exception ex) { return Microsoft.AspNetCore.Http.Results.Problem(ex.Message); }
                 });
 
-                app.MapGet("/api/suppliers/export", (string format) =>
+                // The whole Reports page for the period, one sheet per section.
+                app.MapGet("/api/reports/export", (string format, string from, string to, string lang) =>
                 {
                     try
                     {
-                        var dt = CsvImportExportService.BuildSuppliersExportTable();
-                        string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
-                        {
-                            var bytes = ImportExportHelper.ExportDataTableToCsvBytes(dt);
-                            return Microsoft.AspNetCore.Http.Results.File(bytes, "text/csv", $"suppliers_{stamp}.csv");
-                        }
-                        var xlsx = ImportExportHelper.ExportDataTableToXlsx(dt, "Suppliers");
-                        return Microsoft.AspNetCore.Http.Results.File(xlsx,
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            $"suppliers_{stamp}.xlsx");
-                    }
-                    catch (Exception ex) { return Microsoft.AspNetCore.Http.Results.Problem(ex.Message); }
-                });
-
-                app.MapGet("/api/expenses/export", (string format) =>
-                {
-                    try
-                    {
-                        var dt = CsvImportExportService.BuildExpensesExportTable();
-                        string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
-                        {
-                            var bytes = ImportExportHelper.ExportDataTableToCsvBytes(dt);
-                            return Microsoft.AspNetCore.Http.Results.File(bytes, "text/csv", $"expenses_{stamp}.csv");
-                        }
-                        var xlsx = ImportExportHelper.ExportDataTableToXlsx(dt, "Expenses");
-                        return Microsoft.AspNetCore.Http.Results.File(xlsx,
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            $"expenses_{stamp}.xlsx");
-                    }
-                    catch (Exception ex) { return Microsoft.AspNetCore.Http.Results.Problem(ex.Message); }
-                });
-
-                app.MapGet("/api/sales/export", (string format) =>
-                {
-                    try
-                    {
-                        var dt = CsvImportExportService.BuildSalesExportTable();
-                        string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
-                        {
-                            var bytes = ImportExportHelper.ExportDataTableToCsvBytes(dt);
-                            return Microsoft.AspNetCore.Http.Results.File(bytes, "text/csv", $"sales_{stamp}.csv");
-                        }
-                        var xlsx = ImportExportHelper.ExportDataTableToXlsx(dt, "Sales");
-                        return Microsoft.AspNetCore.Http.Results.File(xlsx,
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            $"sales_{stamp}.xlsx");
-                    }
-                    catch (Exception ex) { return Microsoft.AspNetCore.Http.Results.Problem(ex.Message); }
-                });
-
-                app.MapGet("/api/history/export", (string format) =>
-                {
-                    try
-                    {
-                        var dt = CsvImportExportService.BuildHistoryExportTable();
-                        string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
-                        {
-                            var bytes = ImportExportHelper.ExportDataTableToCsvBytes(dt);
-                            return Microsoft.AspNetCore.Http.Results.File(bytes, "text/csv", $"history_{stamp}.csv");
-                        }
-                        var xlsx = ImportExportHelper.ExportDataTableToXlsx(dt, "History");
-                        return Microsoft.AspNetCore.Http.Results.File(xlsx,
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            $"history_{stamp}.xlsx");
-                    }
-                    catch (Exception ex) { return Microsoft.AspNetCore.Http.Results.Problem(ex.Message); }
-                });
-
-                // Reports export ships two sheets: the headline metrics and the sold-products detail.
-                app.MapGet("/api/reports/export", (string format, string from, string to) =>
-                {
-                    try
-                    {
-                        var svc = new ReportService();
                         DateTime fromDate = DateTime.TryParse(from, out var f) ? f.Date : DateTime.Today;
                         DateTime toDate = DateTime.TryParse(to, out var t) ? t.Date : DateTime.Today;
                         if (toDate < fromDate) (fromDate, toDate) = (toDate, fromDate);
+                        var sheets = CsvImportExportService.BuildReportExportTables(fromDate, toDate, lang);
+                        // CSV carries one table: the products sold, as before.
+                        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase) && sheets.Count > 2)
+                            sheets = new() { sheets[2] };
+                        return ExportFile(format, lang, $"report_{fromDate:yyyyMMdd}_{toDate:yyyyMMdd}", sheets);
+                    }
+                    catch (Exception ex) { return Microsoft.AspNetCore.Http.Results.Problem(ex.Message); }
+                });
 
-                        var summary = svc.GetSummary(fromDate, toDate);
-                        var summaryTable = CsvImportExportService.BuildReportSummaryExportTable(summary);
-                        var productsTable = CsvImportExportService.BuildReportProductsExportTable(fromDate, toDate);
+                // Milk Processing page: raw milk received + what was made, with the page's filters.
+                app.MapGet("/api/milk/export", (string format, string lang, string all, string type, string supplier) =>
+                {
+                    try
+                    {
+                        bool includeFinished = all == "1" || string.Equals(all, "true", StringComparison.OrdinalIgnoreCase);
+                        return ExportFile(format, lang, "milk_processing",
+                            CsvImportExportService.BuildMilkExportTables(includeFinished, type, supplier, lang));
+                    }
+                    catch (Exception ex) { return Microsoft.AspNetCore.Http.Results.Problem(ex.Message); }
+                });
 
-                        string stamp = $"{fromDate:yyyyMMdd}_{toDate:yyyyMMdd}";
-                        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
+                // Labels used by the exports, so the web import can read files in either language.
+                app.MapGet("/api/export/labels", () =>
+                {
+                    try
+                    {
+                        var coded = new System.Collections.Generic.Dictionary<string, string[]>();
+                        foreach (var kind in ExportLocalizer.Kinds.Keys)
+                            coded[kind] = System.Linq.Enumerable.ToArray(ExportLocalizer.CodedColumns(kind));
+                        return Microsoft.AspNetCore.Http.Results.Ok(new
                         {
-                            var bytes = ImportExportHelper.ExportDataTableToCsvBytes(productsTable);
-                            return Microsoft.AspNetCore.Http.Results.File(bytes, "text/csv", $"report_{stamp}.csv");
-                        }
-
-                        var xlsx = ImportExportHelper.ExportTablesToXlsx(new[]
-                        {
-                            ("Summary", summaryTable),
-                            ("Sold Products", productsTable)
+                            headers = ExportLocalizer.HeaderAliases(),
+                            values = ExportLocalizer.ValueAliases(),
+                            coded
                         });
-                        return Microsoft.AspNetCore.Http.Results.File(xlsx,
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            $"report_{stamp}.xlsx");
                     }
                     catch (Exception ex) { return Microsoft.AspNetCore.Http.Results.Problem(ex.Message); }
                 });

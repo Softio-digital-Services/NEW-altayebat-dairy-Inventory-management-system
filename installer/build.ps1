@@ -8,6 +8,22 @@ $distDir = Join-Path $root "dist"
 $iss = Join-Path $PSScriptRoot "AlTayebat.iss"
 $csproj = Join-Path $root "AlTayebatInventorySystem.csproj"
 
+# Only one build at a time: two builds share dist\ and lock each other's files.
+$buildLock = New-Object System.Threading.Mutex($false, "Global\AlTayebatInventoryBuild")
+try { $haveLock = $buildLock.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $haveLock = $true }
+if (-not $haveLock) {
+    throw "Another build (publish.bat / build.ps1) is already running. Wait for it to finish, then run this again."
+}
+
+# Deletes a folder, retrying while files are briefly locked (antivirus scan, a process still exiting).
+function Remove-FolderWithRetry([string]$path) {
+    for ($i = 1; $i -le 10; $i++) {
+        if (-not (Test-Path $path)) { return }
+        try { Remove-Item $path -Recurse -Force -ErrorAction Stop; return }
+        catch { if ($i -eq 10) { throw "Could not delete $path (a file is in use): $($_.Exception.Message)" }; Start-Sleep -Seconds 1 }
+    }
+}
+
 # Find a dotnet.exe that actually has an SDK installed (PATH may point to a runtime-only install).
 $dotnetCandidates = @(
     (Join-Path $env:LocalAppData "Microsoft\dotnet\dotnet.exe"),
@@ -42,7 +58,7 @@ if ($running) {
 }
 
 Write-Host "==> Publishing self-contained Release (win-x64)..." -ForegroundColor Cyan
-if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
+Remove-FolderWithRetry $publishDir
 New-Item -ItemType Directory -Force -Path $publishDir | Out-Null
 
 & $dotnet build-server shutdown | Out-Null
@@ -52,7 +68,7 @@ if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 Write-Host "==> Publishing portable single-file exe..." -ForegroundColor Cyan
 $singleDir = Join-Path $root "dist\_single"
 $portableExe = Join-Path $distDir "AlTayebatInventory.exe"
-if (Test-Path $singleDir) { Remove-Item $singleDir -Recurse -Force }
+Remove-FolderWithRetry $singleDir
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null
 New-Item -ItemType Directory -Force -Path $singleDir | Out-Null
 & $dotnet build-server shutdown | Out-Null
@@ -68,7 +84,7 @@ if ($LASTEXITCODE -ne 0) { throw "dotnet publish (single-file) failed" }
 $publishedExe = Join-Path $singleDir "AlTayebatInventorySystem.exe"
 if (-not (Test-Path $publishedExe)) { throw "Single-file exe not found: $publishedExe" }
 Copy-Item $publishedExe $portableExe -Force
-Remove-Item $singleDir -Recurse -Force
+Remove-FolderWithRetry $singleDir
 Write-Host "Portable app: $portableExe" -ForegroundColor Green
 
 # Offline WebView2 runtime installer, bundled into setup so it installs on laptops without internet.
@@ -130,3 +146,5 @@ Write-Host ""
 Write-Host "Published app folder: $publishDir"
 Write-Host "Portable exe: $(Join-Path $distDir 'AlTayebatInventory.exe')"
 Write-Host "Run locally: $(Join-Path $publishDir 'AlTayebatInventorySystem.exe')"
+
+$buildLock.ReleaseMutex()

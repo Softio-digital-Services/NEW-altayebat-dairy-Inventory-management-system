@@ -7963,3 +7963,141 @@ body #pos .pos-cart-drawer .summary-row.total {
 body #pos .pos-cart-drawer .summary-row.total .pos-sum-label { font-size: 1rem; }
 body #pos .pos-cart-drawer .summary-row.total .pos-total-edit { max-width: none; width: 100%; }
 body #pos .pos-cart-drawer select.pos-total-currency { height: 40px; min-height: 40px; width: 84px; font-size: 0.85rem; }
+
+/* =====================================================================
+   Title bar: Home + Back as labelled pills, the rest grouped into menus
+   ===================================================================== */
+.titlebar-nav { gap: 8px; padding-inline-start: 10px; }
+.tb-pill {
+    height: 38px;
+    padding: 0 14px 0 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+.tb-pill .material-symbols-rounded { font-size: 1.35rem; font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24; }
+.tb-pill:active { transform: scale(0.96); }
+.tb-pill[hidden] { display: none !important; }
+/* Home: solid white with blue icon — the main way around the app */
+.tb-pill-home { background: #fff; color: var(--primary-hover); border: none; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18); }
+.tb-pill-home .material-symbols-rounded { color: var(--primary-color); }
+.tb-pill-home:hover { background: #EFF6FF; }
+.tb-pill-home.active { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45), 0 2px 8px rgba(15, 23, 42, 0.18); }
+/* Back: lighter, outlined, right next to Home */
+.tb-pill-back { background: rgba(255, 255, 255, 0.16); color: #fff; border: 1.5px solid rgba(255, 255, 255, 0.55); }
+.tb-pill-back .material-symbols-rounded { color: #fff; }
+.tb-pill-back:hover { background: rgba(255, 255, 255, 0.26); }
+.tb-divider { width: 1px; height: 24px; background: rgba(255, 255, 255, 0.35); margin: 0 4px; }
+.titlebar-nav .tb-title { margin-inline-start: 2px; font-size: 1.05rem; font-weight: 700; }
+
+/* Tools: just notifications + lock on the bar, then the two menus */
+.titlebar-tools { gap: 4px; }
+.tb-menu-wrap { position: relative; display: inline-flex; }
+.tb-btn.tb-menu-btn[aria-expanded="true"] { background: rgba(255, 255, 255, 0.2); }
+button.tb-user {
+    background: rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+    font-family: inherit;
+    gap: 6px;
+    padding: 0 8px 0 10px;
+    margin-inline-start: 4px;
+}
+button.tb-user:hover, button.tb-user[aria-expanded="true"] { background: rgba(255, 255, 255, 0.22); }
+.tb-user .tb-caret { font-size: 1.15rem !important; width: auto !important; opacity: 0.85; }
+
+.titlebar .tb-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    z-index: 3100;
+    min-width: 220px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
+    direction: inherit;
+}
+body.rtl .titlebar .tb-menu { direction: rtl; }
+.titlebar .tb-menu[hidden] { display: none; }
+.tb-menu-item {
+    height: 44px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: start;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.tb-menu-item:hover { background: rgba(var(--primary-rgb), 0.07); }
+.tb-menu-item .material-symbols-rounded {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 9px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary-color);
+    font-size: 1.15rem;
+}
+.tb-menu-item.tb-menu-danger { color: var(--danger-hover); }
+.tb-menu-item.tb-menu-danger .material-symbols-rounded { background: rgba(var(--danger-rgb), 0.12); color: var(--danger-hover); }
+.tb-menu-item.tb-menu-danger:hover { background: rgba(var(--danger-rgb), 0.08); }
+
+/* Narrow screens: pills keep their icon, labels and the user name drop out */
+@media (max-width: 760px) {
+    .tb-pill-label, .tb-divider { display: none; }
+    .tb-pill { padding: 0 10px; }
+    #tb-user-name { display: none; }
+}
+@media (max-width: 560px) {
+    body.web-client .titlebar-tools .tb-btn { display: inline-flex; }
+    body.web-client .titlebar-tools #btn-lock { display: none; }
+    body.web-client .tb-user { display: inline-flex; }
+    .titlebar-nav .tb-title { display: none; }
+}
+/* Title bar pills, refined: no glow ring on Home; Back is a frosted pill of the same shape */
+.tb-pill-home,
+.tb-pill-home.active { box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18); }
+.tb-pill-back {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+.tb-pill-back:hover { background: rgba(255, 255, 255, 0.3); }
+.tb-pill:focus { outline: none; }
+.tb-pill:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+/* No page title (Home screen) -> no divider either */
+.titlebar-nav:has(.tb-title:empty) .tb-divider { display: none; }
+
+/* Phones/tablets: the whole page scrolls, so the POS lists size to their content instead of
+   "fill the leftover height" (there is none in a scrolling page, which squashed them to zero). */
+@media (max-width: 1024px) {
+    body.web-client #pos .pos-layout,
+    body.web-client #pos .pos-left { flex: 0 0 auto !important; min-height: auto; overflow: visible !important; }
+    body.web-client #pos .pos-cat-grid,
+    body.web-client #pos .pos-products { flex: 0 0 auto; overflow: visible; min-height: auto; }
+}
+@media (max-width: 700px) {
+    #pos .pos-left,
+    #pos .pos-layout { flex: 0 0 auto !important; min-height: auto; overflow: visible !important; }
+    #pos .pos-cat-grid,
+    #pos .pos-products { flex: 0 0 auto; overflow: visible; min-height: auto; }
+    body:has(#pos.active) .main-content { overflow-y: auto !important; }
+}

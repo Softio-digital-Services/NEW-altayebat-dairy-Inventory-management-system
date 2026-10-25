@@ -319,17 +319,19 @@ namespace InventorySystem.Helpers
         /// <summary>
         /// Exports a DataTable to an .xlsx byte array with auto-fitted columns.
         /// </summary>
-        public static byte[] ExportDataTableToXlsx(DataTable dataTable, string sheetName = "Export")
+        public static byte[] ExportDataTableToXlsx(DataTable dataTable, string sheetName = "Export", bool rightToLeft = false)
         {
             if (dataTable == null) return Array.Empty<byte>();
-            return ExportTablesToXlsx(new[] { (sheetName, dataTable) });
+            return ExportTablesToXlsx(new[] { (sheetName, dataTable) }, rightToLeft);
         }
 
         /// <summary>
         /// Exports several DataTables to one workbook, one worksheet each, all columns auto-fitted.
+        /// Arabic exports pass rightToLeft so the sheets read from the right, like the app.
         /// </summary>
         public static byte[] ExportTablesToXlsx(
-            System.Collections.Generic.IEnumerable<(string SheetName, DataTable Table)> sheets)
+            System.Collections.Generic.IEnumerable<(string SheetName, DataTable Table)> sheets,
+            bool rightToLeft = false)
         {
             if (sheets == null) return Array.Empty<byte>();
             using var workbook = new XLWorkbook();
@@ -338,7 +340,7 @@ namespace InventorySystem.Helpers
             foreach (var (sheetName, table) in sheets)
             {
                 if (table == null) continue;
-                WriteSheet(workbook, sheetName, table, added);
+                WriteSheet(workbook, sheetName, table, added, rightToLeft);
                 added++;
             }
 
@@ -362,6 +364,12 @@ namespace InventorySystem.Helpers
             column?.ExtendedProperties[NumberFormatKey] as string;
 
         /// <summary>
+        /// Key for a per-row number format (string[] indexed by row) on one column, for sheets
+        /// that mix money, litres and counts in the same column (the report summary).
+        /// </summary>
+        public const string RowNumberFormatsKey = "rowNumberFormats";
+
+        /// <summary>
         /// Tags the named columns as money so the Excel writer renders them with a currency
         /// symbol and sizes them to the formatted text. Unknown column names are ignored.
         /// </summary>
@@ -376,7 +384,7 @@ namespace InventorySystem.Helpers
             return dataTable;
         }
 
-        private static void WriteSheet(XLWorkbook workbook, string sheetName, DataTable table, int index)
+        private static void WriteSheet(XLWorkbook workbook, string sheetName, DataTable table, int index, bool rightToLeft = false)
         {
             string name = string.IsNullOrWhiteSpace(sheetName) ? $"Sheet{index + 1}" : sheetName.Trim();
             foreach (char bad in new[] { ':', '\\', '/', '?', '*', '[', ']' })
@@ -386,6 +394,7 @@ namespace InventorySystem.Helpers
                 name = (name.Length > 28 ? name.Substring(0, 28) : name) + "_" + (index + 1);
 
             var ws = workbook.Worksheets.Add(name);
+            if (rightToLeft) ws.RightToLeft = true;
 
             int colCount = table.Columns.Count;
             for (int c = 0; c < colCount; c++)
@@ -411,6 +420,17 @@ namespace InventorySystem.Helpers
                     ws.Range(2, c + 1, table.Rows.Count + 1, c + 1)
                       .Style.NumberFormat.Format = format;
                 }
+                for (int c = 0; c < colCount; c++)
+                {
+                    if (table.Columns[c].ExtendedProperties[RowNumberFormatsKey] is not string[] rowFormats) continue;
+                    for (int r = 0; r < table.Rows.Count && r < rowFormats.Length; r++)
+                        if (!string.IsNullOrEmpty(rowFormats[r]))
+                            ws.Cell(r + 2, c + 1).Style.NumberFormat.Format = rowFormats[r];
+                }
+
+                // Header stays visible while scrolling, and each column can be filtered/sorted in Excel.
+                ws.SheetView.FreezeRows(1);
+                ws.Range(1, 1, table.Rows.Count + 1, colCount).SetAutoFilter();
             }
 
             AutoFitWorksheetColumns(ws, table);

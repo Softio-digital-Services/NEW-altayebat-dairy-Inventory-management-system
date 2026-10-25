@@ -55,8 +55,8 @@ namespace InventorySystem.Services
         {
             if (string.IsNullOrWhiteSpace(value)) return defaultValue;
             var v = value.Trim().ToLowerInvariant();
-            if (v is "1" or "true" or "yes" or "y") return true;
-            if (v is "0" or "false" or "no" or "n") return false;
+            if (v is "1" or "true" or "yes" or "y" or "نعم") return true;
+            if (v is "0" or "false" or "no" or "n" or "لا") return false;
             return defaultValue;
         }
 
@@ -282,6 +282,8 @@ namespace InventorySystem.Services
 
         public static ImportBatchResult ImportProducts(IEnumerable<Dictionary<string, string>> rows)
         {
+            // Accept our own exports in either language (and the old raw column names).
+            rows = rows?.Select(r => ExportLocalizer.NormalizeRow(r, "products")).ToList();
             var result = new ImportBatchResult();
             var inventory = new InventoryService();
 
@@ -345,6 +347,8 @@ namespace InventorySystem.Services
 
         public static ImportBatchResult ImportCustomers(IEnumerable<Dictionary<string, string>> rows)
         {
+            // Accept our own exports in either language (and the old raw column names).
+            rows = rows?.Select(r => ExportLocalizer.NormalizeRow(r, "customers")).ToList();
             var result = new ImportBatchResult();
             var service = new CustomerService();
 
@@ -465,6 +469,8 @@ namespace InventorySystem.Services
 
         public static ImportBatchResult ImportSuppliers(IEnumerable<Dictionary<string, string>> rows)
         {
+            // Accept our own exports in either language (and the old raw column names).
+            rows = rows?.Select(r => ExportLocalizer.NormalizeRow(r, "suppliers")).ToList();
             var result = new ImportBatchResult();
             var service = new SupplierService();
 
@@ -594,6 +600,8 @@ namespace InventorySystem.Services
 
         public static ImportBatchResult ImportExpenses(IEnumerable<Dictionary<string, string>> rows, string recordedBy = "Import")
         {
+            // Accept our own exports in either language (and the old raw column names).
+            rows = rows?.Select(r => ExportLocalizer.NormalizeRow(r, "expenses")).ToList();
             var result = new ImportBatchResult();
 
             foreach (var row in rows ?? Enumerable.Empty<Dictionary<string, string>>())
@@ -672,20 +680,56 @@ namespace InventorySystem.Services
 
         #region Export tables
 
+        // Every builder returns its columns in page order with English/Arabic headers and
+        // translated coded values (see ExportLocalizer). lang = "ar" | "en".
+
         private static DataTable MarkCurrency(DataTable dt, params string[] columns) =>
             ImportExportHelper.MarkCurrencyColumns(dt, columns);
+
+        private static DataTable MarkFormat(DataTable dt, string format, params string[] columns)
+        {
+            if (dt == null) return dt;
+            foreach (string name in columns)
+                if (dt.Columns.Contains(name))
+                    dt.Columns[name].ExtendedProperties[ImportExportHelper.NumberFormatKey] = format;
+            return dt;
+        }
+
+        /// <summary>Whole numbers as "1,250"; anything with decimals (litres, kg) as "1,250.5" / "0.525".</summary>
+        private static string QuantityFormatFor(IEnumerable<decimal> values) =>
+            values.All(v => v == decimal.Truncate(v)) ? "#,##0" : "#,##0.0##";
+
+        /// <summary>Gives quantity columns a number format that suits their values (no trailing "200.").</summary>
+        private static DataTable MarkQuantity(DataTable dt, params string[] columns)
+        {
+            if (dt == null) return dt;
+            foreach (string name in columns)
+            {
+                if (!dt.Columns.Contains(name)) continue;
+                var values = dt.Rows.Cast<DataRow>()
+                    .Where(r => r[name] != DBNull.Value)
+                    .Select(r => decimal.TryParse(Convert.ToString(r[name], CultureInfo.InvariantCulture), NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : 0m);
+                dt.Columns[name].ExtendedProperties[ImportExportHelper.NumberFormatKey] = QuantityFormatFor(values);
+            }
+            return dt;
+        }
 
         /// <summary>SQL fragment rendering a 0/1 flag as Yes/No for export readability.</summary>
         private static string YesNo(string expression, string alias) =>
             $"CASE WHEN COALESCE({expression}, 0) IN (1, '1') THEN 'Yes' ELSE 'No' END AS {alias}";
 
-        public static DataTable BuildProductsExportTable(bool includeInactive = true)
+        private static readonly HashSet<string> WeightUnits = new(StringComparer.OrdinalIgnoreCase)
+            { "kg", "g", "gram", "grams", "kilo", "kilos", "kilogram", "kilograms", "lb", "lbs", "oz" };
+
+        /// <summary>Full inventory (re-importable). Adds "Stock (as shown)": weight items in kg like the POS shows them.</summary>
+        public static DataTable BuildProductsExportTable(bool includeInactive = true, string lang = "en")
         {
+            bool ar = ExportLocalizer.IsArabic(lang);
             string statusFilter = includeInactive
                 ? "WHERE p.date_deleted IS NULL"
                 : "WHERE p.date_deleted IS NULL AND (p.status = 'Active' OR p.status IS NULL) AND COALESCE(p.is_inactive, 0) = 0";
 
-            return MarkCurrency(DatabaseHelper.ExecuteDataTable($@"
+            var dt = DatabaseHelper.ExecuteDataTable($@"
                 SELECT p.part_number, p.part_name, p.description,
                        COALESCE(c.category_name, 'General') AS category_name,
                        p.supplier_id, COALESCE(s.supplier_name, '') AS supplier_name,
@@ -707,13 +751,30 @@ namespace InventorySystem.Services
                 LEFT JOIN categories c ON p.category_id = c.id
                 LEFT JOIN suppliers s ON p.supplier_id = s.id
                 {statusFilter}
-                ORDER BY c.category_name, p.part_name"),
-                "selling_price", "purchase_price", "price2", "price3", "price4");
+                ORDER BY c.category_name, p.part_name");
+
+            // Weight items keep their stock in grams; show it the way the POS does (12.000 kg).
+            dt.Columns.Add("stock_display", typeof(string));
+            foreach (DataRow r in dt.Rows)
+            {
+                decimal qty = r["quantity_in_stock"] == DBNull.Value ? 0 : Convert.ToDecimal(r["quantity_in_stock"]);
+                string uom = r["unit_of_measure"]?.ToString()?.Trim() ?? "";
+                bool byWeight = string.Equals(r["sell_by_weight"]?.ToString(), "Yes", StringComparison.OrdinalIgnoreCase)
+                                || WeightUnits.Contains(uom);
+                r["stock_display"] = byWeight
+                    ? (qty / 1000m).ToString("0.000", CultureInfo.InvariantCulture) + (ar ? " كغ" : " kg")
+                    : qty.ToString("0.###", CultureInfo.InvariantCulture) + " " + (string.IsNullOrEmpty(uom)
+                        ? (ar ? "قطعة" : "pcs")
+                        : ExportLocalizer.Value(uom, ar));
+            }
+
+            MarkCurrency(dt, "selling_price", "purchase_price", "price2", "price3", "price4");
+            return ExportLocalizer.Localize(dt, "products", ar);
         }
 
-        public static DataTable BuildCustomersExportTable()
+        public static DataTable BuildCustomersExportTable(string lang = "en")
         {
-            return MarkCurrency(DatabaseHelper.ExecuteDataTable(@"
+            var dt = MarkCurrency(DatabaseHelper.ExecuteDataTable(@"
                 SELECT full_name AS CustomerName, phone AS Phone, email AS Email, address AS Address,
                        COALESCE(type, 'Regular') AS CustomerType, COALESCE(current_balance, 0) AS Balance,
                        COALESCE(credit_limit, 1000) AS CreditLimit,
@@ -722,114 +783,279 @@ namespace InventorySystem.Services
                 WHERE date_deleted IS NULL
                 ORDER BY full_name"),
                 "Balance", "CreditLimit");
+            return ExportLocalizer.Localize(dt, "customers", ExportLocalizer.IsArabic(lang));
         }
 
-        public static DataTable BuildSuppliersExportTable()
+        /// <summary>Suppliers (re-importable). City/PostalCode/Website/Notes are never stored, so they are not written.</summary>
+        public static DataTable BuildSuppliersExportTable(string lang = "en")
         {
-            return MarkCurrency(DatabaseHelper.ExecuteDataTable(@"
+            var dt = MarkCurrency(DatabaseHelper.ExecuteDataTable(@"
                 SELECT supplier_name AS SupplierName, contact_person AS ContactPerson,
                        phone AS Phone, email AS Email, address AS Address,
                        COALESCE(type, 'Regular') AS Type, COALESCE(balance_due, 0) AS Balance,
-                       payment_due_date AS PaymentDueDate, COALESCE(reminder_days, 0) AS ReminderDays,
-                       '' AS City, '' AS PostalCode, '' AS Website, '' AS Notes
+                       payment_due_date AS PaymentDueDate, COALESCE(reminder_days, 0) AS ReminderDays
                 FROM suppliers
                 WHERE date_deleted IS NULL
                 ORDER BY supplier_name"),
                 "Balance");
+            return ExportLocalizer.Localize(dt, "suppliers", ExportLocalizer.IsArabic(lang));
         }
 
-        public static DataTable BuildExpensesExportTable()
+        /// <summary>Parses "1,2,3" into ids; anything that is not a number is ignored.</summary>
+        private static List<long> ParseIdList(string ids)
         {
-            return MarkCurrency(DatabaseHelper.ExecuteDataTable($@"
-                SELECT expense_date AS date, category, amount, description,
-                       {YesNo("is_paid", "paid")},
-                       {YesNo("is_recurring", "recurring")}
-                FROM expenses
-                WHERE date_deleted IS NULL AND category != 'System'
-                ORDER BY expense_date DESC"),
-                "amount");
+            var list = new List<long>();
+            foreach (var part in (ids ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                if (long.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id)) list.Add(id);
+            return list;
         }
 
         /// <summary>
-        /// Completed sales orders. Column names match SaleImportRow so an export can be re-imported.
+        /// Expenses with everything the page shows (deliverer, liters, price per liter, milk type, shift).
+        /// ids = the expenses currently listed on the page (its filters); empty = all.
         /// </summary>
-        public static DataTable BuildSalesExportTable()
+        public static DataTable BuildExpensesExportTable(string ids = null, string lang = "en")
         {
-            return MarkCurrency(DatabaseHelper.ExecuteDataTable(@"
+            var idList = ParseIdList(ids);
+            string idFilter = idList.Count > 0 ? $" AND e.expense_id IN ({string.Join(",", idList)})" : "";
+            var dt = DatabaseHelper.ExecuteDataTable($@"
+                SELECT e.expense_date AS date, e.category,
+                       COALESCE(s.supplier_name, '') AS deliverer,
+                       CASE WHEN COALESCE(e.liters, 0) > 0 THEN e.liters END AS liters,
+                       CASE WHEN COALESCE(e.unit_price, 0) > 0 THEN e.unit_price END AS unit_price,
+                       COALESCE(e.milk_type, '') AS milk_type, COALESCE(e.shift, '') AS shift,
+                       e.amount, COALESCE(e.description, '') AS description,
+                       {YesNo("e.is_paid", "paid")},
+                       {YesNo("e.is_recurring", "recurring")},
+                       COALESCE(e.recorded_by, '') AS recorded_by
+                FROM expenses e
+                LEFT JOIN suppliers s ON s.id = e.supplier_id
+                WHERE e.date_deleted IS NULL AND e.category != 'System'{idFilter}
+                ORDER BY e.expense_date DESC, e.expense_id DESC");
+            MarkCurrency(dt, "unit_price", "amount");
+            MarkQuantity(dt, "liters");
+            return ExportLocalizer.Localize(dt, "expenses", ExportLocalizer.IsArabic(lang));
+        }
+
+        /// <summary>
+        /// Completed sales in the page's date range (both empty = all), with the items sold, payment,
+        /// balance due and shipping details. Column keys match SaleImportRow so an export can be re-imported.
+        /// </summary>
+        public static DataTable BuildSalesExportTable(string from = null, string to = null, string lang = "en")
+        {
+            bool ranged = DateTime.TryParse(from, out var f) & DateTime.TryParse(to, out var t);
+            if (ranged && t < f) (f, t) = (t, f);
+            string range = ranged ? " AND date(o.order_date) BETWEEN date(@from) AND date(@to)" : "";
+            string sql = $@"
                 SELECT o.order_id AS orderId,
                        o.order_date AS date,
                        COALESCE(c.full_name, 'Walk-in') AS customer,
+                       (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi
+                         WHERE oi.order_id = o.order_id) AS itemCount,
+                       (SELECT GROUP_CONCAT(printf('%s × %g', COALESCE(NULLIF(oi.item_name, ''), p.part_name, '?'), oi.quantity), ' | ')
+                          FROM order_items oi LEFT JOIN parts p ON p.id = oi.part_id
+                         WHERE oi.order_id = o.order_id) AS items,
                        COALESCE(o.total_amount, 0) AS total,
                        COALESCE(o.amount_paid, 0) AS amountPaid,
-                       COALESCE(o.payment_status, '') AS payment,
+                       MAX(COALESCE(o.total_amount, 0) - COALESCE(o.amount_paid, 0), 0) AS balanceDue,
+                       COALESCE(o.payment_status, 'Paid') AS payment,
                        COALESCE(o.payment_method, '') AS paymentMethod,
                        COALESCE(o.status, '') AS status,
-                       (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi
-                         WHERE oi.order_id = o.order_id) AS itemCount
+                       COALESCE(o.shipping_address, '') AS shippingAddress,
+                       o.delivery_date AS deliveryDate,
+                       o.due_date AS dueDate
                 FROM orders o
                 LEFT JOIN customers c ON o.customer_id = c.customer_id
-                WHERE o.status IS NOT NULL AND o.status NOT IN ('Draft', 'Quotation')
-                ORDER BY o.order_date DESC, o.order_id DESC"),
-                "total", "amountPaid");
+                WHERE o.status = 'Completed'{range}
+                ORDER BY o.order_date DESC, o.order_id DESC";
+            var dt = ranged
+                ? DatabaseHelper.ExecuteDataTable(sql,
+                    new SqliteParameter("@from", f.ToString("yyyy-MM-dd")),
+                    new SqliteParameter("@to", t.ToString("yyyy-MM-dd")))
+                : DatabaseHelper.ExecuteDataTable(sql);
+            MarkCurrency(dt, "total", "amountPaid", "balanceDue");
+            MarkQuantity(dt, "itemCount");
+            return ExportLocalizer.Localize(dt, "sales", ExportLocalizer.IsArabic(lang));
         }
 
         /// <summary>
-        /// Activity log. Column names match HistoryImportRow so an export can be re-imported.
+        /// The History page's data for its selected type (orders, pay later, inventory log, customers,
+        /// suppliers, quotations) — the same query the page uses.
         /// </summary>
-        public static DataTable BuildHistoryExportTable()
+        public static DataTable BuildHistoryExportTable(string kind = "all", string lang = "en")
         {
-            return DatabaseHelper.ExecuteDataTable(@"
-                SELECT timestamp AS date,
-                       COALESCE(action_type, '') AS action,
-                       COALESCE(part_name, '') AS item,
-                       COALESCE(description, '') AS details,
-                       COALESCE(username, '') AS user
-                FROM transactions
-                ORDER BY timestamp DESC");
+            var svc = new HistoryService();
+            DataTable dt = (kind ?? "").ToLowerInvariant() switch
+            {
+                "inventory" => svc.GetInventoryLogs(),
+                "customers" => svc.GetCustomerHistory(),
+                "pay_later" => svc.GetOrderHistory(unpaidOnly: true),
+                "quotations" => svc.GetQuotationHistory(),
+                "suppliers" => svc.GetSupplierHistory(),
+                _ => svc.GetOrderHistory()
+            };
+            foreach (DataColumn col in dt.Columns)
+                col.ColumnName = col.ColumnName.Trim().ToLowerInvariant().Replace(' ', '_');
+            MarkCurrency(dt, "total", "amount");
+            return ExportLocalizer.Localize(dt, "history", ExportLocalizer.IsArabic(lang));
+        }
+
+        private static decimal Dec(DataRow r, string col) =>
+            r == null || !r.Table.Columns.Contains(col) || r[col] == DBNull.Value ? 0m : Convert.ToDecimal(r[col], CultureInfo.InvariantCulture);
+
+        /// <summary>
+        /// The whole Reports page for a period, one sheet per section in page order: summary
+        /// (money, activity, milk), sales vs expenses trend, products, categories, expenses,
+        /// expenses by category, milk deliverers.
+        /// </summary>
+        public static List<(string Sheet, DataTable Table)> BuildReportExportTables(DateTime fromDate, DateTime toDate, string lang = "en")
+        {
+            bool ar = ExportLocalizer.IsArabic(lang);
+            var svc = new ReportService();
+            var s = svc.GetSummary(fromDate, toDate);
+            var act = svc.GetActivity(fromDate, toDate);
+            var sheets = new List<(string, DataTable)>();
+
+            // Summary: metric | value, each row with its own number format.
+            var summary = new DataTable();
+            summary.Columns.Add("metric", typeof(string));
+            summary.Columns.Add("value", typeof(object));
+            var formats = new List<string>();
+            void Add(string key, object value, string format)
+            {
+                summary.Rows.Add(ExportLocalizer.Metric(key, ar), value);
+                formats.Add(format);
+            }
+            const string money = ImportExportHelper.CurrencyFormat;
+            Add("date_from", s.FromDate.Date, "yyyy-mm-dd");
+            Add("date_to", s.ToDate.Date, "yyyy-mm-dd");
+            Add("total_sales", s.TotalSales, money);
+            Add("total_cost", s.TotalCost, money);
+            Add("profit_before", s.TotalProfit, money);
+            Add("total_expenses", s.TotalExpenses, money);
+            Add("milk_expenses", s.TotalMilkExpenses, money);
+            Add("general_expenses", s.TotalGeneralExpenses, money);
+            Add("profit_after", s.TotalProfitAfterExpenses, money);
+            Add("order_count", Dec(act, "order_count"), "#,##0");
+            Add("items_sold", Dec(act, "items_sold"), QuantityFormatFor(new[] { Dec(act, "items_sold") }));
+            Add("unpaid_count", Dec(act, "unpaid_count"), "#,##0");
+            Add("unpaid_total", Dec(act, "unpaid_total"), money);
+            Add("returns_count", Dec(act, "returns_count"), "#,##0");
+            Add("returns_total", Dec(act, "returns_total"), money);
+            Add("milk_liters", s.TotalMilkLiters, QuantityFormatFor(new[] { s.TotalMilkLiters }));
+            Add("milk_unpaid", s.TotalUnpaidMilkExpenses, money);
+            Add("expense_count", Dec(act, "expense_count"), "#,##0");
+            summary.Columns["value"].ExtendedProperties[ImportExportHelper.RowNumberFormatsKey] = formats.ToArray();
+            sheets.Add((ExportLocalizer.Sheet("report_summary", ar), ExportLocalizer.Localize(summary, "report_summary", ar)));
+
+            // Sales vs expenses per day (per month for long ranges), like the chart.
+            var trend = new DataTable();
+            trend.Columns.Add("period", typeof(string));
+            trend.Columns.Add("sales", typeof(decimal));
+            trend.Columns.Add("expenses", typeof(decimal));
+            trend.Columns.Add("net", typeof(decimal));
+            foreach (var item in svc.GetTrend(fromDate, toDate))
+            {
+                var type = item.GetType();
+                string period = type.GetProperty("period")?.GetValue(item)?.ToString() ?? "";
+                decimal sales = Convert.ToDecimal(type.GetProperty("sales")?.GetValue(item) ?? 0m);
+                decimal expenses = Convert.ToDecimal(type.GetProperty("expenses")?.GetValue(item) ?? 0m);
+                trend.Rows.Add(period, sales, expenses, sales - expenses);
+            }
+            MarkCurrency(trend, "sales", "expenses", "net");
+            sheets.Add((ExportLocalizer.Sheet("report_trend", ar), ExportLocalizer.Localize(trend, "report_trend", ar)));
+
+            // Products sold (the page's query) + margin.
+            var products = svc.GetProductsReport(fromDate, toDate);
+            products.Columns.Add("margin", typeof(decimal));
+            var weight = new DataColumn("sell_by_weight_text", typeof(string));
+            products.Columns.Add(weight);
+            foreach (DataRow r in products.Rows)
+            {
+                decimal sales = Dec(r, "total_sales");
+                r["margin"] = sales > 0 ? Math.Round(Dec(r, "profit") / sales * 100m, 1) : 0m;
+                r["sell_by_weight_text"] = Dec(r, "sell_by_weight") != 0 ? "Yes" : "No";
+            }
+            products.Columns.Remove("sell_by_weight");
+            weight.ColumnName = "sell_by_weight";
+            MarkCurrency(products, "unit_price", "total_sales", "total_cost", "profit");
+            MarkQuantity(products, "quantity_sold");
+            MarkFormat(products, "0.0", "margin");
+            sheets.Add((ExportLocalizer.Sheet("report_products", ar), ExportLocalizer.Localize(products, "report_products", ar)));
+
+            // Sales by category + share of sales.
+            var cats = svc.GetTopSellingCategories(fromDate, toDate, 100000);
+            cats.Columns.Add("share", typeof(decimal));
+            decimal catTotal = cats.Rows.Cast<DataRow>().Sum(r => Dec(r, "total_sales"));
+            foreach (DataRow r in cats.Rows)
+                r["share"] = catTotal > 0 ? Math.Round(Dec(r, "total_sales") / catTotal * 100m, 1) : 0m;
+            MarkCurrency(cats, "total_sales", "profit");
+            MarkQuantity(cats, "quantity_sold");
+            MarkFormat(cats, "0.0", "share");
+            sheets.Add((ExportLocalizer.Sheet("report_categories", ar), ExportLocalizer.Localize(cats, "report_categories", ar)));
+
+            // Every expense in the period.
+            var exp = svc.GetExpensesList(fromDate, toDate);
+            var paidText = new DataColumn("is_paid_text", typeof(string));
+            exp.Columns.Add(paidText);
+            foreach (DataRow r in exp.Rows) r["is_paid_text"] = Dec(r, "is_paid") != 0 ? "Yes" : "No";
+            exp.Columns.Remove("is_paid");
+            if (exp.Columns.Contains("expense_id")) exp.Columns.Remove("expense_id");
+            paidText.ColumnName = "is_paid";
+            MarkCurrency(exp, "amount");
+            MarkQuantity(exp, "liters");
+            sheets.Add((ExportLocalizer.Sheet("report_expenses", ar), ExportLocalizer.Localize(exp, "report_expenses", ar)));
+
+            var expCats = svc.GetExpenseCategoryBreakdown(fromDate, toDate);
+            MarkCurrency(expCats, "total_amount", "paid_amount", "unpaid_amount");
+            sheets.Add((ExportLocalizer.Sheet("report_expcats", ar), ExportLocalizer.Localize(expCats, "report_expcats", ar)));
+
+            var milk = svc.GetMilkSupplierBreakdown(fromDate, toDate);
+            if (milk.Columns.Contains("supplier_id")) milk.Columns.Remove("supplier_id");
+            MarkCurrency(milk, "avg_unit_price", "total_amount", "total_paid", "total_unpaid");
+            MarkQuantity(milk, "total_liters");
+            sheets.Add((ExportLocalizer.Sheet("report_milk", ar), ExportLocalizer.Localize(milk, "report_milk", ar)));
+
+            return sheets;
         }
 
         /// <summary>
-        /// Report summary as a two-column metric/value sheet.
+        /// Milk Processing page: raw milk received (used / remaining) and what was made, following
+        /// the page's filters — show fully used, milk type, supplier.
         /// </summary>
-        public static DataTable BuildReportSummaryExportTable(SalesReportSummary summary)
+        public static List<(string Sheet, DataTable Table)> BuildMilkExportTables(bool includeFinished, string milkType, string supplier, string lang = "en")
         {
-            var dt = new DataTable("Summary");
-            dt.Columns.Add("metric", typeof(string));
-            dt.Columns.Add("value", typeof(string));
-            if (summary == null) return dt;
+            bool ar = ExportLocalizer.IsArabic(lang);
+            var svc = new MilkProductionService();
+            bool typeAll = string.IsNullOrEmpty(milkType) || string.Equals(milkType, "all", StringComparison.OrdinalIgnoreCase);
+            bool suppAll = string.IsNullOrEmpty(supplier);
 
-            string Money(decimal v) =>
-                v.ToString(ImportExportHelper.CurrencyFormat, CultureInfo.InvariantCulture);
+            var intakes = svc.GetMilkIntakes(onlyRemaining: !includeFinished);
+            foreach (DataRow r in intakes.Select().ToList())
+            {
+                bool okType = typeAll || string.Equals(r["milk_type"]?.ToString() ?? "", milkType, StringComparison.OrdinalIgnoreCase);
+                bool okSupp = suppAll || string.Equals(r["supplier_name"]?.ToString() ?? "", supplier, StringComparison.OrdinalIgnoreCase);
+                if (!okType || !okSupp) r.Delete();
+            }
+            intakes.AcceptChanges();
+            foreach (string drop in new[] { "expense_id", "description" })
+                if (intakes.Columns.Contains(drop)) intakes.Columns.Remove(drop);
+            MarkQuantity(intakes, "liters", "used", "remaining");
 
-            dt.Rows.Add("Date From", summary.FromDate.ToString("yyyy-MM-dd"));
-            dt.Rows.Add("Date To", summary.ToDate.ToString("yyyy-MM-dd"));
-            dt.Rows.Add("Total Sales", Money(summary.TotalSales));
-            dt.Rows.Add("Total Cost", Money(summary.TotalCost));
-            dt.Rows.Add("Total Expenses", Money(summary.TotalExpenses));
-            dt.Rows.Add("Profit Before Expenses", Money(summary.TotalProfit));
-            dt.Rows.Add("Profit After Expenses", Money(summary.TotalProfitAfterExpenses));
-            return dt;
-        }
+            var prods = svc.GetProductions(null);
+            foreach (DataRow r in prods.Select().ToList())
+                if (!suppAll && !string.Equals(r["supplier_name"]?.ToString() ?? "", supplier, StringComparison.OrdinalIgnoreCase))
+                    r.Delete();
+            prods.AcceptChanges();
+            foreach (string drop in new[] { "production_id", "expense_id", "recorded_by" })
+                if (prods.Columns.Contains(drop)) prods.Columns.Remove(drop);
+            MarkQuantity(prods, "liters_used", "quantity_made");
 
-        /// <summary>
-        /// Sold-products detail for the given range, with export-friendly column names.
-        /// </summary>
-        public static DataTable BuildReportProductsExportTable(DateTime fromDate, DateTime toDate)
-        {
-            var dt = new ReportService().GetSoldProductsDetail(fromDate, toDate);
-            RenameColumn(dt, "product_name", "Product");
-            RenameColumn(dt, "quantity_sold", "Quantity Sold");
-            RenameColumn(dt, "unit_price", "Unit Price");
-            RenameColumn(dt, "total_sales", "Total Sales");
-            RenameColumn(dt, "total_cost", "Total Cost");
-            RenameColumn(dt, "profit", "Profit");
-            return MarkCurrency(dt, "Unit Price", "Total Sales", "Total Cost", "Profit");
-        }
-
-        private static void RenameColumn(DataTable dt, string from, string to)
-        {
-            if (dt != null && dt.Columns.Contains(from))
-                dt.Columns[from].ColumnName = to;
+            return new List<(string, DataTable)>
+            {
+                (ExportLocalizer.Sheet("milk_intakes", ar), ExportLocalizer.Localize(intakes, "milk_intakes", ar)),
+                (ExportLocalizer.Sheet("milk_productions", ar), ExportLocalizer.Localize(prods, "milk_productions", ar)),
+            };
         }
 
         #endregion

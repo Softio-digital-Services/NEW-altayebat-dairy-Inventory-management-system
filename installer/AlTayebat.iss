@@ -3,7 +3,7 @@
 ; Requires Inno Setup 6.4+ for WebView2 download helper
 
 #define MyAppName "Al-Tayebat Inventory"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.1.0"
 #define MyAppPublisher "Al-Tayebat"
 #define MyAppExeName "AlTayebatInventorySystem.exe"
 #define PublishDir "..\dist\app"

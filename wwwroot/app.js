@@ -171,6 +171,7 @@ const T = {
         rep_profit_before_expenses: 'Profit (before expenses)', rep_profit_after_expenses: 'Profit (after expenses)',
         lic_type: 'Type', lic_customer: 'Customer', lic_expires: 'Expires', lic_days: 'Days left',
         lic_valid: 'Valid', lic_invalid: 'Invalid', lic_trial: 'Trial', lic_machine: 'Machine',
+        tb_tools: 'Tools',
         export: 'Export', tool_notif: 'Notifications', tool_lock: 'Lock', tool_calc: 'Calculator',
         refresh: 'Refresh', add_category: 'Add Category', add_customer: 'Add Customer',
         add_supplier: 'Add Supplier', add_user: 'Add User', add_currency: 'Add Currency',
@@ -180,6 +181,7 @@ const T = {
         quote_preview_title: 'Quotation Preview', quote_preview_quote: 'QUOTATION',
         quote_preview_cust_header: 'Customer Details', quote_col_photo: 'Photo', quote_col_desc: 'Item Description', quote_col_qty: 'Qty',
         quote_preview_meta: 'QUOTE #: {0}   |   DATE: {1}   |   CUST ID: {2}   |   VALIDITY: {3}',
+        quote_csv_no: 'Quote #', quote_csv_customer_id: 'Customer ID', quote_csv_validity: 'Validity',
         quote_validity_days: '15 Days', quote_no_address: 'No Address Provided', quote_no_phone: 'No Phone Provided',
         quote_terms_head: 'TERMS AND CONDITIONS',
         quote_terms_body: '• Validity: 15 days from issue.\n• Payment due prior to delivery.\n• Acceptance indicates billing confirmation.\n\nAccepted By: __________________________',
@@ -565,6 +567,7 @@ const T = {
         rep_profit_before_expenses: 'الربح (قبل المصروفات)', rep_profit_after_expenses: 'الربح (بعد المصروفات)',
         lic_type: 'النوع', lic_customer: 'العميل', lic_expires: 'ينتهي', lic_days: 'الأيام المتبقية',
         lic_valid: 'صالح', lic_invalid: 'غير صالح', lic_trial: 'تجريبي', lic_machine: 'الجهاز',
+        tb_tools: 'أدوات',
         export: 'تصدير', tool_notif: 'الإشعارات', tool_lock: 'قفل', tool_calc: 'آلة حاسبة',
         refresh: 'تحديث', add_category: 'إضافة فئة', add_customer: 'إضافة عميل',
         add_supplier: 'إضافة مورد', add_user: 'إضافة مستخدم', add_currency: 'إضافة عملة',
@@ -574,6 +577,7 @@ const T = {
         quote_preview_title: 'معاينة عرض السعر', quote_preview_quote: 'عرض سعر',
         quote_preview_cust_header: 'تفاصيل العميل', quote_col_photo: 'صورة', quote_col_desc: 'وصف الصنف', quote_col_qty: 'الكمية',
         quote_preview_meta: 'رقم العرض: {0}   |   التاريخ: {1}   |   رقم العميل: {2}   |   الصلاحية: {3}',
+        quote_csv_no: 'رقم العرض', quote_csv_customer_id: 'رقم العميل', quote_csv_validity: 'الصلاحية',
         quote_validity_days: '15 يوماً', quote_no_address: 'لا يوجد عنوان', quote_no_phone: 'لا يوجد هاتف',
         quote_terms_head: 'الشروط والأحكام',
         quote_terms_body: '• الصلاحية: 15 يوماً من تاريخ الإصدار.\n• الدفع مستحق قبل التسليم.\n• القبول يعني تأكيد الفوترة.\n\nتم القبول بواسطة: __________________________',
@@ -1445,6 +1449,8 @@ const exportCsv = (rows, filename) => {
 
 async function downloadServerExport(path, fallbackName, onFallback) {
     try {
+        // Exports follow the app language: Arabic headers/values and right-to-left sheets
+        path += (path.includes('?') ? '&' : '?') + 'lang=' + encodeURIComponent(lang);
         const res = await fetch(API + path, { credentials: 'same-origin' });
         if (!res.ok) {
             if (res.status === 404 && typeof onFallback === 'function') {
@@ -1591,6 +1597,34 @@ async function parseCsvFile(file) {
         return obj;
     });
     return { headers, rows };
+}
+
+// Labels the Excel/CSV exports use (server ExportLocalizer), so an exported file in either
+// language — or an old file with raw column names — imports back cleanly.
+let _exportLabels = null;
+async function getExportLabels() {
+    if (_exportLabels) return _exportLabels;
+    try { _exportLabels = await api('/api/export/labels'); }
+    catch { _exportLabels = { headers: {}, values: {}, coded: {} }; }
+    return _exportLabels;
+}
+
+/** Maps headers to the export kind's canonical (lower-case) keys and Arabic coded values back to English. */
+async function normalizeImportRows(rows, kind) {
+    const L = await getExportLabels();
+    const map = (L.headers && L.headers[kind]) || {};
+    const coded = new Set(((L.coded && L.coded[kind]) || []).map(k => String(k).toLowerCase()));
+    const values = L.values || {};
+    return rows.map(row => {
+        const out = {};
+        for (const [k, v] of Object.entries(row)) {
+            const key = String(map[k] || k).toLowerCase();
+            let val = v;
+            if (coded.has(key) && val && values[String(val).trim()] != null) val = values[String(val).trim()];
+            if (out[key] == null || out[key] === '') out[key] = val;
+        }
+        return out;
+    });
 }
 
 function csvCell(row, ...keys) {
@@ -1824,6 +1858,35 @@ async function openHomeTarget(go) {
     await navigateTo(go, true);
 }
 
+// Title bar: Tools (calculator, backup, about) and the account menu (language, logout).
+// The items keep their ids, so their existing click handlers still run.
+function closeTitlebarMenus() {
+    document.querySelectorAll('.titlebar .tb-menu').forEach(m => {
+        m.hidden = true;
+        m.parentElement.querySelector('.tb-menu-btn')?.setAttribute('aria-expanded', 'false');
+    });
+}
+
+function setupTitlebarMenus() {
+    document.querySelectorAll('.titlebar .tb-menu-wrap').forEach(wrap => {
+        const btn = wrap.querySelector('.tb-menu-btn');
+        const menu = wrap.querySelector('.tb-menu');
+        if (!btn || !menu) return;
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            const open = menu.hidden;
+            closeTitlebarMenus();
+            closePageMenus();
+            menu.hidden = !open;
+            btn.setAttribute('aria-expanded', String(open));
+            if (open) placePageMenu(btn, menu);
+        });
+        menu.addEventListener('click', () => setTimeout(closeTitlebarMenus, 0));
+    });
+    document.addEventListener('click', e => { if (!e.target.closest('.titlebar .tb-menu-wrap')) closeTitlebarMenus(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTitlebarMenus(); });
+}
+
 function setupHomeScreen() {
     const onTile = e => {
         const b = e.target.closest('[data-go]');
@@ -1831,6 +1894,7 @@ function setupHomeScreen() {
     };
     document.getElementById('home')?.addEventListener('click', onTile);
     document.getElementById('more')?.addEventListener('click', onTile);
+    setupTitlebarMenus();
     document.getElementById('btn-nav-home')?.addEventListener('click', () => navigateTo('home', true));
     document.getElementById('btn-nav-back')?.addEventListener('click', () => navigateBack());
 }
@@ -3650,21 +3714,27 @@ function printQuotationPreview() {
 function exportQuotationPreview() {
     const data = _quotePreviewData;
     if (!data) return;
+    // Same content as the preview, in the app language
+    const subtotal = Number(data.subtotal || 0);
+    const grand = Number(data.totalAmount != null ? data.totalAmount : subtotal);
+    const tax = Math.max(0, grand - subtotal);
     const rows = [
-        ['Quote #', data.orderId],
-        ['Date', formatQuoteDate(data.orderDate)],
-        ['Customer', data.customerName || ''],
-        ['Customer ID', data.customerId != null ? data.customerId : 'N/A'],
-        ['Validity', '15 Days'],
+        [tr('quote_csv_no'), data.orderId],
+        [tr('col_date'), formatQuoteDate(data.orderDate)],
+        [tr('col_customer'), data.customerName || ''],
+        [tr('quote_csv_customer_id'), data.customerId != null ? data.customerId : '—'],
+        [tr('quote_csv_validity'), tr('quote_validity_days')],
         [],
-        ['Item', 'Qty', 'Price', 'Total'],
+        [tr('quote_col_desc'), tr('quote_col_qty'), tr('col_price'), tr('col_total')],
         ...(data.items || []).map(it => [it.name, it.qty, it.price, Number(it.price) * Number(it.qty)]),
         [],
-        ['Subtotal', data.subtotal],
-        ['Grand Total', data.totalAmount],
+        [tr('subtotal'), subtotal],
+        ...(tax > 0.009 ? [[tr('quote_tax_extras'), tax]] : []),
+        [tr('grand_total'), grand],
     ];
     const csv = rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    // BOM so Excel opens the file as UTF-8 (Arabic shows correctly)
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `quotation_${data.orderId}.csv`;
@@ -3674,6 +3744,13 @@ function exportQuotationPreview() {
 }
 
 let custDebtOnly = false;
+let expensesShownIds = []; // expenses currently listed on the Expenses page
+
+// Nothing filtered out -> no ids (server exports all, keeps the URL short); empty list -> nothing.
+function expensesExportIdsParam() {
+    if (expensesShownIds.length >= (expenses || []).length) return '';
+    return '&ids=' + encodeURIComponent((expensesShownIds.length ? expensesShownIds : [0]).join(','));
+}
 
 function renderCustomers() {
     const q = (document.getElementById('cust-search')?.value || '').toLowerCase();
@@ -3994,6 +4071,9 @@ function renderExpenses() {
         if (toVal && d > toVal) return false;
         return true;
     });
+
+    // Export writes exactly these rows (the page's filters)
+    expensesShownIds = filtered.map(e => e.expenseId);
 
     // Compute stats
     let totalAll = 0, totalMilkLiters = 0, totalMilkCost = 0, totalMilkUnpaid = 0, totalGeneralCost = 0;
@@ -7074,7 +7154,9 @@ async function viewOrder(orderId) {
 }
 
 async function importCustomersCsv(file) {
-    const { headers, rows } = await parseCsvFile(file);
+    const parsed = await parseCsvFile(file);
+    const headers = parsed.headers;
+    const rows = await normalizeImportRows(parsed.rows, 'customers');
     if (!rows.length) return toast(tr('empty_list'), 'error');
     try {
         const res = await api('/api/customers/import', { method: 'POST', body: JSON.stringify({ rows, headers }) });
@@ -7084,7 +7166,9 @@ async function importCustomersCsv(file) {
 }
 
 async function importSuppliersCsv(file) {
-    const { headers, rows } = await parseCsvFile(file);
+    const parsed = await parseCsvFile(file);
+    const headers = parsed.headers;
+    const rows = await normalizeImportRows(parsed.rows, 'suppliers');
     if (!rows.length) return toast(tr('empty_list'), 'error');
     try {
         const res = await api('/api/suppliers/import', { method: 'POST', body: JSON.stringify({ rows, headers }) });
@@ -7094,7 +7178,9 @@ async function importSuppliersCsv(file) {
 }
 
 async function importInventoryCsv(file) {
-    const { headers, rows } = await parseCsvFile(file);
+    const parsed = await parseCsvFile(file);
+    const headers = parsed.headers;
+    const rows = await normalizeImportRows(parsed.rows, 'products');
     if (!rows.length) return toast(tr('empty_list'), 'error');
     try {
         const res = await api('/api/products/import', { method: 'POST', body: JSON.stringify({ rows, headers }) });
@@ -7104,7 +7190,8 @@ async function importInventoryCsv(file) {
 }
 
 async function importSalesCsv(file) {
-    const { rows } = await parseCsvFile(file);
+    const parsed = await parseCsvFile(file);
+    const rows = await normalizeImportRows(parsed.rows, 'sales');
     if (!rows.length) return toast(tr('empty_list'), 'error');
     const payload = rows.map(row => ({
         customer: csvCell(row, 'customer', 'customer_name'),
@@ -7121,7 +7208,8 @@ async function importSalesCsv(file) {
 }
 
 async function importHistoryCsv(file) {
-    const { rows } = await parseCsvFile(file);
+    const parsed = await parseCsvFile(file);
+    const rows = await normalizeImportRows(parsed.rows, 'history');
     if (!rows.length) return toast(tr('empty_list'), 'error');
     const payload = rows.map(row => ({
         date: csvCell(row, 'date'),
@@ -7145,12 +7233,13 @@ async function importHistoryCsv(file) {
 }
 
 async function importReportsCsv(file) {
-    const { rows } = await parseCsvFile(file);
+    const parsed = await parseCsvFile(file);
+    const rows = await normalizeImportRows(parsed.rows, 'report_products');
     if (!rows.length) return toast(tr('empty_list'), 'error');
     const payload = rows.map(row => ({
         rowType: csvCell(row, 'row_type', 'rowtype') || (csvCell(row, 'name', 'product') ? 'product' : 'summary'),
         name: csvCell(row, 'name', 'product', 'product_name'),
-        qty: parseFloat(csvCell(row, 'qty', 'quantity') || '0') || 0,
+        qty: parseFloat(csvCell(row, 'qty', 'quantity', 'quantity_sold') || '0') || 0,
         sales: parseFloat(csvCell(row, 'sales', 'total_sales') || '0') || 0,
         profit: parseFloat(csvCell(row, 'profit') || '0') || 0,
         total: parseFloat(csvCell(row, 'total', 'amount') || '0') || 0,
@@ -7168,7 +7257,8 @@ async function importReportsCsv(file) {
 }
 
 async function importExpensesCsv(file) {
-    const { rows } = await parseCsvFile(file);
+    const parsed = await parseCsvFile(file);
+    const rows = await normalizeImportRows(parsed.rows, 'expenses');
     if (!rows.length) return toast(tr('empty_list'), 'error');
     try {
         const res = await api('/api/expenses/import', {
@@ -8161,7 +8251,11 @@ function setupActions() {
         '/api/suppliers/export?format=xlsx', 'suppliers.xlsx',
         () => exportCsv(suppliers.map(supplierExportRow), 'suppliers.csv'));
     document.getElementById('btn-export-sales')?.addEventListener('click', () => downloadServerExport(
-        '/api/sales/export?format=xlsx', 'sales.xlsx',
+        '/api/sales/export?' + new URLSearchParams({
+            format: 'xlsx',
+            from: document.getElementById('sales-from')?.value || '',
+            to: document.getElementById('sales-to')?.value || ''
+        }).toString(), 'sales.xlsx',
         () => exportCsv(sales.map(o => ({
             orderId: o.orderId, date: o.date, customer: o.customer, total: o.total,
             payment: o.paymentStatus || o.payment || ''
@@ -8194,10 +8288,10 @@ function setupActions() {
         });
     });
     document.getElementById('btn-export-history')?.addEventListener('click', () => downloadServerExport(
-        '/api/history/export?format=xlsx', 'history.xlsx',
+        '/api/history/export?format=xlsx&kind=' + encodeURIComponent(document.getElementById('history-kind')?.value || 'all'), 'history.xlsx',
         () => exportCsv((window._historyRows || []).map(historyExportRow), 'history.csv')));
     document.getElementById('btn-export-expenses')?.addEventListener('click', () =>
-        downloadServerExport('/api/expenses/export?format=xlsx', 'expenses.xlsx', () =>
+        downloadServerExport('/api/expenses/export?format=xlsx' + expensesExportIdsParam(), 'expenses.xlsx', () =>
             exportCsv(expenses.map(e => ({
                 date: e.expenseDate, category: e.category, deliverer: e.supplierName || '',
                 liters: e.liters || '', unit_price: e.unitPrice || '', milk_type: e.milkType || '', shift: e.shift || '',
@@ -9645,6 +9739,14 @@ async function addMilkNewItem() {
 function setupMilkProcessing() {
     document.getElementById('btn-refresh-milk')?.addEventListener('click', loadMilkProcessing);
     document.getElementById('milk-show-finished')?.addEventListener('change', loadMilkProcessing);
+    // Excel: raw milk received + what was made, with the page's milk type / supplier / fully-used filters
+    document.getElementById('btn-export-milk')?.addEventListener('click', () => downloadServerExport(
+        '/api/milk/export?' + new URLSearchParams({
+            format: 'xlsx',
+            all: document.getElementById('milk-show-finished')?.checked ? '1' : '0',
+            type: milkTypeFilter || 'all',
+            supplier: milkSupplierFilter || ''
+        }).toString(), 'milk_processing.xlsx'));
     document.getElementById('milk-type-chips')?.addEventListener('click', e => {
         const chip = e.target.closest('[data-milk-type]');
         if (!chip) return;
