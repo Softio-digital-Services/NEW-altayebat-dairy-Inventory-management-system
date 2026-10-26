@@ -92,6 +92,8 @@ const T = {
         print_settings_hint: 'Set paper size in mm for any printer. Each printer remembers its own size.',
         print_label_size: 'Barcode labels',
         print_receipt_size: 'POS receipt',
+        print_receipt_mode: 'Printing method', print_mode_auto: 'Automatic (recommended)', print_mode_direct: 'Direct to receipt printer (ESC/POS)', print_mode_driver: 'Windows printer driver',
+        print_receipt_mode_hint: 'Use Direct if the receipt comes out as lines of code (SIZE, BITMAP...). Automatic does this for Xprinter label/receipt printers.',
         print_preset: 'Preset',
         print_width_mm: 'Width (mm)',
         print_height_mm: 'Height (mm)',
@@ -403,7 +405,7 @@ const T = {
         username: 'اسم المستخدم', password: 'كلمة المرور', login_btn: 'دخول', logout: 'خروج',
         nav_dashboard: 'لوحة التحكم', nav_inventory: 'المخزون', nav_pos: 'نقطة البيع', nav_sales: 'المبيعات',
         nav_reports: 'التقارير', nav_history: 'السجل', nav_quotations: 'عروض الأسعار',
-        nav_customers: 'العملاء', nav_suppliers: 'الموردون', nav_expenses: 'المصروفات',
+        nav_customers: 'الزبائن', nav_suppliers: 'الموردون', nav_expenses: 'المصروفات',
         nav_milk_processing: 'تصنيع الحليب', milk_show_finished: 'إظهار المستهلك بالكامل', milk_intakes: 'الحليب الخام المستلم',
         milk_productions: 'ما تم تصنيعه', milk_used: 'المستخدم', milk_remaining: 'المتبقي', mp_liters: 'لتر',
         milk_remaining_of: 'من أصل {0} لتر مستلم • {1} لتر مستخدم', more_actions: 'إجراءات أخرى',
@@ -463,7 +465,7 @@ const T = {
         dash_subtitle: 'نظرة عامة على نشاطك', inv_subtitle: 'إدارة القطع ومستويات المخزون',
         pos_subtitle: 'امسح أو اضغط على المنتجات للبيع', sales_subtitle: 'سجل الطلبات والمرتجعات',
         reports_subtitle: 'ملخص المبيعات والأرباح', history_subtitle: 'سجل النشاط',
-        quot_subtitle: 'عروض بانتظار التحويل', cust_subtitle: 'دليل العملاء',
+        quot_subtitle: 'عروض بانتظار التحويل', cust_subtitle: 'دليل الزبائن',
         supp_subtitle: 'دليل الموردين', exp_subtitle: 'تتبع مصروفات العمل',
         cur_subtitle: 'أسعار الصرف مقابل الدولار', bar_subtitle: 'معاينة ملصقات الطباعة',
         barcode_preview_title: 'طباعة',
@@ -489,6 +491,8 @@ const T = {
         print_settings_hint: 'اضبط حجم الورق بالمليمتر لأي طابعة. كل طابعة تحتفظ بحجمها.',
         print_label_size: 'ملصقات الباركود',
         print_receipt_size: 'إيصال نقطة البيع',
+        print_receipt_mode: 'طريقة الطباعة', print_mode_auto: 'تلقائي (موصى به)', print_mode_direct: 'مباشرة إلى طابعة الإيصالات (ESC/POS)', print_mode_driver: 'برنامج تشغيل الطابعة في ويندوز',
+        print_receipt_mode_hint: 'اختر "مباشرة" إذا خرج الإيصال كسطور من الأوامر (SIZE, BITMAP...). الوضع التلقائي يفعل ذلك لطابعات Xprinter.',
         print_preset: 'إعداد مسبق',
         print_width_mm: 'العرض (مم)',
         print_height_mm: 'الارتفاع (مم)',
@@ -529,7 +533,7 @@ const T = {
         top_products: 'أفضل المنتجات', best_selling: 'الأكثر مبيعاً', top_categories: 'أفضل الفئات', mark_paid: 'تعليم الدفع', paid: 'مدفوع', unpaid: 'غير مدفوع',
         preset_daily: 'يومي', preset_weekly: 'أسبوعي', preset_monthly: 'شهري', preset_yearly: 'سنوي', preset_custom: 'مخصص',
         date_from: 'من', date_to: 'إلى',
-        col_order: 'الطلب', col_date: 'التاريخ', col_customer: 'العميل', col_total: 'الإجمالي',
+        col_order: 'الطلب', col_date: 'التاريخ', col_customer: 'الزبون', col_total: 'الإجمالي',
         col_name: 'الاسم', col_sku: 'الرمز', col_category: 'الفئة', col_price: 'السعر',
         col_stock: 'المخزون', col_status: 'الحالة', col_actions: 'إجراءات', col_phone: 'الهاتف',
         col_email: 'البريد', col_balance: 'المبلغ المستحق', col_payment: 'الدفع', col_type: 'النوع', col_contact: 'جهة الاتصال',
@@ -565,19 +569,19 @@ const T = {
         low_stock_count: 'مخزون منخفض', orders_today: 'طلبات اليوم',
         rep_sales: 'المبيعات', rep_cost: 'التكلفة', rep_expenses: 'المصروفات', rep_profit: 'الربح',
         rep_profit_before_expenses: 'الربح (قبل المصروفات)', rep_profit_after_expenses: 'الربح (بعد المصروفات)',
-        lic_type: 'النوع', lic_customer: 'العميل', lic_expires: 'ينتهي', lic_days: 'الأيام المتبقية',
+        lic_type: 'النوع', lic_customer: 'الزبون', lic_expires: 'ينتهي', lic_days: 'الأيام المتبقية',
         lic_valid: 'صالح', lic_invalid: 'غير صالح', lic_trial: 'تجريبي', lic_machine: 'الجهاز',
         tb_tools: 'أدوات', session_expired: 'يرجى تسجيل الدخول مرة أخرى',
         export: 'تصدير', tool_notif: 'الإشعارات', tool_lock: 'قفل', tool_calc: 'آلة حاسبة',
-        refresh: 'تحديث', add_category: 'إضافة فئة', add_customer: 'إضافة عميل',
+        refresh: 'تحديث', add_category: 'إضافة فئة', add_customer: 'إضافة زبون',
         add_supplier: 'إضافة مورد', add_user: 'إضافة مستخدم', add_currency: 'إضافة عملة',
         edit: 'تعديل', delete: 'حذف', confirm_delete: 'حذف هذا السجل؟', confirm_title: 'يرجى التأكيد', confirm_btn: 'تأكيد', import: 'استيراد',
         refresh_rates: 'تحديث الأسعار', view: 'عرض', deleted_ok: 'تم الحذف', saved_ok: 'تم الحفظ', import_ok: 'تم الاستيراد',
         view_order: 'عرض الطلب', col_address: 'العنوان', edit_product: 'تعديل المنتج',
         quote_preview_title: 'معاينة عرض السعر', quote_preview_quote: 'عرض سعر',
-        quote_preview_cust_header: 'تفاصيل العميل', quote_col_photo: 'صورة', quote_col_desc: 'وصف الصنف', quote_col_qty: 'الكمية',
-        quote_preview_meta: 'رقم العرض: {0}   |   التاريخ: {1}   |   رقم العميل: {2}   |   الصلاحية: {3}',
-        quote_csv_no: 'رقم العرض', quote_csv_customer_id: 'رقم العميل', quote_csv_validity: 'الصلاحية',
+        quote_preview_cust_header: 'تفاصيل الزبون', quote_col_photo: 'صورة', quote_col_desc: 'وصف الصنف', quote_col_qty: 'الكمية',
+        quote_preview_meta: 'رقم العرض: {0}   |   التاريخ: {1}   |   رقم الزبون: {2}   |   الصلاحية: {3}',
+        quote_csv_no: 'رقم العرض', quote_csv_customer_id: 'رقم الزبون', quote_csv_validity: 'الصلاحية',
         quote_validity_days: '15 يوماً', quote_no_address: 'لا يوجد عنوان', quote_no_phone: 'لا يوجد هاتف',
         quote_terms_head: 'الشروط والأحكام',
         quote_terms_body: '• الصلاحية: 15 يوماً من تاريخ الإصدار.\n• الدفع مستحق قبل التسليم.\n• القبول يعني تأكيد الفوترة.\n\nتم القبول بواسطة: __________________________',
@@ -650,22 +654,22 @@ const T = {
         debt_clear_selection: 'مسح التحديد',
         debt_pay_order: 'دفع على الطلب',
         debt_remaining: 'المتبقي',
-        debt_no_orders: 'لا توجد طلبات غير مدفوعة لهذا العميل.',
+        debt_no_orders: 'لا توجد طلبات غير مدفوعة لهذا الزبون.',
         debt_recent_payments: 'الدفعات الأخيرة',
         debt_select_or_amount: 'حدد أصنافاً/طلبات أو أدخل مبلغاً',
         debt_orders_owed: 'طلبات مفتوحة: {0}',
         manage_categories: 'إدارة الفئات', rename: 'إعادة تسمية', stock_ok: 'تم تحديث المخزون',
         payment_ok: 'تم تسجيل الدفعة', restore_backup: 'استعادة', confirm_restore: 'استعادة هذه النسخة؟ سيتم استبدال جميع البيانات الحالية.',
-        add_exp_category: 'إضافة فئة', recurring: 'متكرر', one_time: 'مرة واحدة', recurring_monthly: 'مصروف شهري متكرر', add_expense_category_option: '+ إضافة فئة جديدة', note: 'ملاحظة', walk_in: 'عميل عابر',
-        walk_in_customer: 'عميل عابر', new_order: 'طلب جديد',
+        add_exp_category: 'إضافة فئة', recurring: 'متكرر', one_time: 'مرة واحدة', recurring_monthly: 'مصروف شهري متكرر', add_expense_category_option: '+ إضافة فئة جديدة', note: 'ملاحظة', walk_in: 'زبون عابر',
+        walk_in_customer: 'زبون عابر', new_order: 'طلب جديد',
         vat_label: 'ضريبة (11%)', shipping: 'الشحن', discount: 'خصم (%)',
         total_payable: 'الإجمالي المستحق', currency: 'العملة',
         return_items: 'مرتجع', save_draft: 'حفظ مسودة', quotation: 'عرض سعر',
         customer_bill: 'ادفع لاحقاً', place_order: 'ادفع الآن',
         empty_cart_hint: 'السلة فارغة! أضف منتجات أولاً.',
         pay_later_hint: 'بيع الآن واستلام الدفع لاحقاً',
-        bill_need_customer: 'اختر عميلاً لـ ادفع لاحقاً',
-        bill_ok: 'أُضيف إلى دين العميل',
+        bill_need_customer: 'اختر زبوناً لـ ادفع لاحقاً',
+        bill_ok: 'أُضيف إلى دين الزبون',
         bill_ok_detail: 'أُضيف {0} إلى {1}. المبلغ المستحق: {2}',
         pos_amount_owed: 'المبلغ المستحق',
         pos_credit_left: 'الائتمان المتبقي',
@@ -750,7 +754,7 @@ const T = {
         item_not_found: 'الصنف غير موجود',
         return_ok_blind: 'تمت معالجة المرتجع',
         return_from_sale: 'مرتجع من فاتورة',
-        return_from_sale_hint: 'اختر العميل ثم الفاتورة ثم الأصناف المراد إرجاعها.',
+        return_from_sale_hint: 'اختر الزبون ثم الفاتورة ثم الأصناف المراد إرجاعها.',
         quick_return: 'مرتجع سريع (بدون فاتورة)',
         quick_return_hint: 'استخدمه فقط عند عدم وجود إيصال. امسح الأصناف لإعادتها للمخزون.',
         show_sales: 'عرض المبيعات',
@@ -760,8 +764,8 @@ const T = {
         can_return: 'قابل للإرجاع',
         return_qty: 'كمية الإرجاع',
         unit_price: 'السعر',
-        no_sales_for_customer: 'لا توجد مبيعات لهذا العميل',
-        select_customer_or_order: 'اختر عميلاً أو أدخل رقم الطلب',
+        no_sales_for_customer: 'لا توجد مبيعات لهذا الزبون',
+        select_customer_or_order: 'اختر زبوناً أو أدخل رقم الطلب',
         return_ok_detail: 'تم إرجاع {0} صنف/أصناف. الاسترداد {1}. تم تحديث المخزون.',
         already_fully_returned: 'لا يوجد شيء متبقٍ للإرجاع في هذه الفاتورة',
         load_to_cart: 'تحميل',
@@ -819,6 +823,7 @@ let printSettings = {
     receiptMarginLeftMm: 2.5,
     labelPrinter: '',
     receiptPrinter: '',
+    receiptMode: 'auto',
     printerProfiles: {}
 };
 const LABEL_PRESETS = {
@@ -973,6 +978,7 @@ function applyPrintSettings(s) {
         receiptMarginLeftMm: margin(s.receiptMarginLeftMm, margin(s.receiptMarginMm, 2.5)),
         labelPrinter: s.labelPrinter || '',
         receiptPrinter: s.receiptPrinter || '',
+        receiptMode: ['direct', 'driver'].includes(s.receiptMode) ? s.receiptMode : 'auto',
         printerProfiles: s.printerProfiles && typeof s.printerProfiles === 'object' ? s.printerProfiles : {}
     };
     applyPrintCssVars();
@@ -1075,6 +1081,7 @@ function fillPrintSettingsForm() {
     setVal('ps-receipt-preset', matchReceiptPreset(printSettings.receiptWidthMm));
     setVal('ps-label-printer', printSettings.labelPrinter || '');
     setVal('ps-receipt-printer', printSettings.receiptPrinter || '');
+    setVal('ps-receipt-mode', printSettings.receiptMode || 'auto');
     renderPrintProfilesList();
     toggleSheetPageRows();
 }
@@ -1194,7 +1201,8 @@ async function savePrintSettingsFromForm() {
         receiptMarginBottomMm: readNum('ps-receipt-mb', 2.5, 0, 20),
         receiptMarginLeftMm: readNum('ps-receipt-ml', 2.5, 0, 20),
         labelPrinter: document.getElementById('ps-label-printer')?.value || '',
-        receiptPrinter: document.getElementById('ps-receipt-printer')?.value || ''
+        receiptPrinter: document.getElementById('ps-receipt-printer')?.value || '',
+        receiptMode: document.getElementById('ps-receipt-mode')?.value || 'auto'
     };
     try {
         const res = await api('/api/print-settings', {
@@ -1307,9 +1315,23 @@ function formatPosPrice(p) {
     return isSellByWeight(p) ? `${base}${tr('per_kg')}` : base;
 }
 
+// Stock already taken by cart lines (grams for weight items, pieces otherwise)
+function cartStockQty(id) {
+    return cart
+        .filter(x => x.id === id && !x.skipStock)
+        .reduce((sum, x) => sum + (x.stockQty != null ? Number(x.stockQty)
+            : (x.weighted || isSellByWeight(x)) ? Math.round((Number(x.weightKg) || Number(x.qty) || 0) * 1000)
+            : (Number(x.qty) || 0)), 0);
+}
+
+// What is still available to sell: stock minus what is in the cart
+function posStockLeft(p) {
+    return Math.max(0, (Number(p?.stock) || 0) - (p ? cartStockQty(p.id) : 0));
+}
+
 // Weight stock is held in grams: red when out, orange at or under 1 kg, green otherwise
 function weightStockLevel(p) {
-    const g = Number(p?.stock) || 0;
+    const g = posStockLeft(p);
     if (g <= 0) return 'out';
     return g <= 1000 ? 'low' : 'ok';
 }
@@ -1318,10 +1340,11 @@ function formatPosStock(p) {
     if (p.isService || p.itemType === 'Service') return tr('type_service');
     if (!isPosProductAvailable(p)) return tr('out_of_stock');
     if (isSellByWeight(p)) {
-        const kg = (Number(p.stock) || 0) / 1000;
+        const kg = posStockLeft(p) / 1000;
         return `${kg.toFixed(3)} ${tr('unit_kg')}`;
     }
-    return `${p.stock} ${tr('col_stock').toLowerCase()}`;
+    if (p.isStockTracked === false) return `${p.stock} ${tr('col_stock').toLowerCase()}`;
+    return `${posStockLeft(p)} ${tr('col_stock').toLowerCase()}`;
 }
 
 function makeCartLine(p, qty = 1, price = null, opts = {}) {
@@ -1751,8 +1774,11 @@ function toast(msg, type = '') {
 
 // Login token from /api/login, sent with every data request (the server refuses data without it)
 function authHeaders(extra = {}) {
-    return { ...extra, 'X-Auth-Token': (currentUser && currentUser.token) || '' };
+    return { ...extra, 'X-Auth-Token': (currentUser && currentUser.token) || '', 'X-Client-Id': CLIENT_ID };
 }
+
+// Identifies this screen, so live updates caused by its own changes are not reloaded twice
+const CLIENT_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 // Server restarted or the token is unknown: back to the sign-in screen once.
 function handleSessionExpired() {
@@ -2705,6 +2731,25 @@ function renderPOS() {
     renderCart();
 }
 
+// Updates only the stock line of the product boxes on screen (no full redraw, renderPOS calls renderCart)
+function refreshPosStockLabels() {
+    const grid = document.getElementById('pos-products');
+    if (!grid || grid.hidden) return;
+    grid.querySelectorAll('.pos-product-card').forEach(card => {
+        const p = products.find(x => x.id === Number(card.dataset.id));
+        if (!p || p.isService || p.itemType === 'Service') return;
+        const weightEl = card.querySelector('.pos-weight-stock');
+        if (weightEl) {
+            weightEl.className = `pos-weight-stock lvl-${weightStockLevel(p)}`;
+            const strong = weightEl.querySelector('strong');
+            if (strong) strong.textContent = formatPosStock(p);
+            return;
+        }
+        const line = card.querySelector('h3 + p');
+        if (line) line.textContent = formatPosStock(p);
+    });
+}
+
 function posProductCardsHtml(list) {
     if (!list.length) return `<div class="empty-state pos-empty-products"><span class="material-symbols-rounded">inventory_2</span><div>${tr('no_products')}</div></div>`;
     return list.map(p => {
@@ -3500,6 +3545,9 @@ function renderCart() {
         });
     }
     updatePosTotalsUi();
+    // Stock shown on the product boxes and the scale popup leaves out what is in the cart
+    refreshPosStockLabels();
+    try { scaleManager.renderSelected(); } catch { /* scale not set up yet */ }
 }
 
 function updatePosTotalsUi() {
@@ -8801,16 +8849,50 @@ function setupTools() {
     });
 }
 
+// Auto refresh: reload the data and redraw the open page when another device changes something.
+// Several changes close together cause one reload.
+let _liveRefreshTimer = null;
+function scheduleLiveRefresh(delay = 400) {
+    if (!currentUser) return;
+    clearTimeout(_liveRefreshTimer);
+    _liveRefreshTimer = setTimeout(async () => {
+        try {
+            await loadData({ fromSignalR: true });
+            // These pages keep their own lists outside loadData
+            const view = currentViewTarget();
+            if (view === 'sales') { await loadSalesRange(); renderSales(); }
+            if (view === 'milk-processing') await loadMilkProcessing();
+        } catch (e) { console.error('live refresh', e); }
+    }, delay);
+}
+
 function setupSignalR() {
     if (!window.signalR) return;
-    const connection = new signalR.HubConnectionBuilder().withUrl('/hubs/inventory').withAutomaticReconnect().build();
-    const onInventoryEvent = () => { loadData({ fromSignalR: true }); };
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl('/hubs/inventory')
+        .withAutomaticReconnect([0, 2000, 5000, 10000, 20000, 30000])
+        .build();
+    const onInventoryEvent = () => scheduleLiveRefresh();
     connection.on('InventoryChanged', onInventoryEvent);
     connection.on('SaleCompleted', onInventoryEvent);
     connection.on('StockUpdated', onInventoryEvent);
+    connection.on('DataChanged', (msg) => {
+        if (msg && msg.by && msg.by === CLIENT_ID) return; // our own change, already shown
+        scheduleLiveRefresh();
+    });
     connection.on('ScaleWeight', () => { /* scale branch only */ });
     connection.on('ScaleStatus', () => { /* scale branch only */ });
-    connection.start().catch(() => setTimeout(setupSignalR, 5000));
+    // Changes made while disconnected (phone asleep, Wi-Fi drop) are picked up on reconnect
+    connection.onreconnected(() => scheduleLiveRefresh(0));
+    const start = () => connection.start().catch(() => setTimeout(start, 5000));
+    connection.onclose(() => setTimeout(start, 3000));
+    start();
+    // Phone screen turned back on / app brought to front: catch up
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') return;
+        if (connection.state !== 'Connected') start();
+        scheduleLiveRefresh(0);
+    });
 }
 
 const scaleManager = {

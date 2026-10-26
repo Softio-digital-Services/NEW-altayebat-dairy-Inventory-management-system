@@ -60,11 +60,11 @@ namespace InventorySystem.Helpers
             },
             ["customers"] = new[]
             {
-                C("CustomerName", "Customer Name", "اسم العميل"),
+                C("CustomerName", "Customer Name", "اسم الزبون"),
                 C("Phone", "Phone", "الهاتف"),
                 C("Email", "Email", "البريد الإلكتروني"),
                 C("Address", "Address", "العنوان"),
-                C("CustomerType", "Customer Type", "نوع العميل"),
+                C("CustomerType", "Customer Type", "نوع الزبون"),
                 C("Balance", "Amount Owed", "المبلغ المستحق"),
                 C("CreditLimit", "Credit Limit", "حد الائتمان"),
                 C("PaymentDueDate", "Payment Due Date", "تاريخ استحقاق الدفع"),
@@ -101,7 +101,7 @@ namespace InventorySystem.Helpers
             {
                 C("orderId", "Order #", "رقم الطلب"),
                 C("date", "Date", "التاريخ"),
-                C("customer", "Customer", "العميل"),
+                C("customer", "Customer", "الزبون"),
                 C("itemCount", "Quantity", "الكمية"),
                 C("items", "Items Sold", "الأصناف المباعة"),
                 C("total", "Total", "الإجمالي"),
@@ -123,7 +123,7 @@ namespace InventorySystem.Helpers
                 C("date", "Date", "التاريخ"),
                 C("type", "Type", "النوع"),
                 C("action", "Action", "الإجراء"),
-                C("customer", "Customer", "العميل"),
+                C("customer", "Customer", "الزبون"),
                 C("supplier", "Supplier", "المورد"),
                 C("item", "Item", "الصنف"),
                 C("total", "Total", "الإجمالي"),
@@ -242,7 +242,7 @@ namespace InventorySystem.Helpers
         private static readonly Dictionary<string, (string En, string Ar)> Sheets = new(StringComparer.OrdinalIgnoreCase)
         {
             ["products"] = ("Inventory", "المخزون"),
-            ["customers"] = ("Customers", "العملاء"),
+            ["customers"] = ("Customers", "الزبائن"),
             ["suppliers"] = ("Suppliers", "الموردون"),
             ["expenses"] = ("Expenses", "المصروفات"),
             ["sales"] = ("Sales", "المبيعات"),
@@ -288,8 +288,8 @@ namespace InventorySystem.Helpers
             ["Raw Milk"] = "حليب خام",
             ["General"] = "عام",
             ["Uncategorized"] = "غير مصنف",
-            ["Walk-in"] = "عميل عابر",
-            ["Cash Customer"] = "عميل نقدي",
+            ["Walk-in"] = "زبون عابر",
+            ["Cash Customer"] = "زبون نقدي",
             ["Unassigned / Walk-in"] = "غير محدد",
             ["Regular"] = "عادي",
             ["Order"] = "طلب",
@@ -429,7 +429,7 @@ namespace InventorySystem.Helpers
                 var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var c in kv.Value)
                 {
-                    foreach (var label in new[] { c.Key, c.En, c.Ar })
+                    foreach (var label in new[] { c.Key, c.En, c.Ar, LegacyArabic(c.Ar) })
                     {
                         string k = (label ?? "").Trim().ToLowerInvariant();
                         if (k.Length > 0 && !map.ContainsKey(k)) map[k] = c.Key;
@@ -445,9 +445,17 @@ namespace InventorySystem.Helpers
         {
             var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var kv in Values)
+            {
                 if (!map.ContainsKey(kv.Value)) map[kv.Value] = kv.Key;
+                string old = LegacyArabic(kv.Value);
+                if (!map.ContainsKey(old)) map[old] = kv.Key;
+            }
             return map;
         }
+
+        /// <summary>Older Arabic exports said عميل/عملاء where the app now says زبون/زبائن.</summary>
+        private static string LegacyArabic(string ar) =>
+            (ar ?? "").Replace("زبائن", "عملاء").Replace("زبون", "عميل");
 
         /// <summary>
         /// Maps an imported row's headers (English labels, Arabic labels or canonical keys) to the

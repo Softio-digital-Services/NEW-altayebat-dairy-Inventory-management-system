@@ -39,7 +39,7 @@
     <value>إنشاء طلب بيع</value>
   </data>
   <data name="POS_Customer" xml:space="preserve">
-    <value>العميل</value>
+    <value>الزبون</value>
   </data>
   <data name="POS_OrderDate" xml:space="preserve">
     <value>تاريخ الطلب</value>
@@ -158,7 +158,7 @@
     <value>المخزون</value>
   </data>
   <data name="Nav_Customers" xml:space="preserve">
-    <value>العملاء</value>
+    <value>الزبائن</value>
   </data>
   <data name="Nav_Suppliers" xml:space="preserve">
     <value>الموردين</value>
@@ -250,7 +250,7 @@
   </data>
   <!-- Customers -->
   <data name="Cust_Title" xml:space="preserve">
-    <value>دليل العملاء</value>
+    <value>دليل الزبائن</value>
   </data>
   <data name="Cust_Search" xml:space="preserve">
     <value>بحث...</value>
@@ -262,7 +262,7 @@
     <value>تصدير</value>
   </data>
   <data name="Cust_Details" xml:space="preserve">
-    <value>تفاصيل العميل</value>
+    <value>تفاصيل الزبون</value>
   </data>
   <data name="Cust_RecordSale" xml:space="preserve">
     <value>تسجيل بيع</value>
@@ -271,13 +271,13 @@
     <value>استلام دفعة</value>
   </data>
   <data name="Cust_AddCustomer" xml:space="preserve">
-    <value>إضافة عميل</value>
+    <value>إضافة زبون</value>
   </data>
   <data name="Cust_Delete" xml:space="preserve">
     <value>حذف</value>
   </data>
   <data name="Cust_GridName" xml:space="preserve">
-    <value>اسم العميل</value>
+    <value>اسم الزبون</value>
   </data>
   <data name="Cust_GridPhone" xml:space="preserve">
     <value>الهاتف</value>
@@ -360,7 +360,7 @@
     <value>سجلات المخزون</value>
   </data>
   <data name="Hist_TabCustomers" xml:space="preserve">
-    <value>سجل العملاء</value>
+    <value>سجل الزبائن</value>
   </data>
   <data name="Hist_TabSuppliers" xml:space="preserve">
     <value>سجل الموردين</value>
@@ -387,7 +387,7 @@
     <value>النوع</value>
   </data>
   <data name="Hist_ColCustomer" xml:space="preserve">
-    <value>العميل</value>
+    <value>الزبون</value>
   </data>
   <data name="Hist_ColAmount" xml:space="preserve">
     <value>المبلغ</value>
@@ -542,16 +542,16 @@
     <value>إلغاء</value>
   </data>
   <data name="AddCust_TitleNew" xml:space="preserve">
-    <value>إضافة عميل جديد</value>
+    <value>إضافة زبون جديد</value>
   </data>
   <data name="AddCust_TitleEdit" xml:space="preserve">
-    <value>تعديل بيانات عميل</value>
+    <value>تعديل بيانات زبون</value>
   </data>
   <data name="AddCust_UpdateBtn" xml:space="preserve">
-    <value>تحديث بيانات العميل</value>
+    <value>تحديث بيانات الزبون</value>
   </data>
   <data name="AddCust_Section" xml:space="preserve">
-    <value>بيانات العميل</value>
+    <value>بيانات الزبون</value>
   </data>
   <data name="AddCust_FullName" xml:space="preserve">
     <value>الاسم الكامل *</value>
@@ -560,13 +560,13 @@
     <value>البريد الإلكتروني</value>
   </data>
   <data name="AddCust_Type" xml:space="preserve">
-    <value>نوع العميل</value>
+    <value>نوع الزبون</value>
   </data>
   <data name="AddCust_Save" xml:space="preserve">
-    <value>حفظ العميل</value>
+    <value>حفظ الزبون</value>
   </data>
   <data name="AddCust_ReqName" xml:space="preserve">
-    <value>اسم العميل مطلوب.</value>
+    <value>اسم الزبون مطلوب.</value>
   </data>
   <data name="AddSup_TitleNew" xml:space="preserve">
     <value>إضافة مورد جديد</value>
@@ -661,7 +661,7 @@
     <value>عروض الأسعار</value>
   </data>
   <data name="Msg_CustomerQuotations" xml:space="preserve">
-    <value>عروض أسعار العملاء</value>
+    <value>عروض أسعار الزبائن</value>
   </data>
   <data name="Nav_Users" xml:space="preserve">
     <value>إدارة المستخدمين</value>
@@ -697,7 +697,7 @@
     <value>قيد الانتظار</value>
   </data>
   <data name="POS_WalkIn" xml:space="preserve">
-    <value>عميل عابر</value>
+    <value>زبون عابر</value>
   </data>
   <data name="POS_NotEnoughStock" xml:space="preserve">
     <value>لا يوجد مخزون كافٍ!</value>
@@ -1019,13 +1019,13 @@
     <value>الدفع لاحقاً</value>
   </data>
   <data name="POS_ConfirmAddBill" xml:space="preserve">
-    <value>تأكيد إضافة {0} إلى رصيد العميل؟</value>
+    <value>تأكيد إضافة {0} إلى رصيد الزبون؟</value>
   </data>
   <data name="POS_CreditLimitExceeded" xml:space="preserve">
     <value>تجاوز الحد الائتماني</value>
   </data>
   <data name="POS_CreditLimitExceededMsg" xml:space="preserve">
-    <value>لقد تجاوز العميل حده الائتماني. الرصيد الحالي: {0}، المبلغ الجديد: {1}، الحد: {2}</value>
+    <value>لقد تجاوز الزبون حده الائتماني. الرصيد الحالي: {0}، المبلغ الجديد: {1}، الحد: {2}</value>
   </data>
   <data name="AddCust_CreditLimit" xml:space="preserve">
     <value>الحد الائتماني</value>
@@ -1062,7 +1062,7 @@
     <value>تذكير بالدفع</value>
   </data>
   <data name="Label_Customer" xml:space="preserve">
-    <value>العميل</value>
+    <value>الزبون</value>
   </data>
   <data name="Label_Supplier" xml:space="preserve">
     <value>المورد</value>
@@ -1089,10 +1089,10 @@
     <value>طلب #{0} بواسطة {1} - {2}</value>
   </data>
   <data name="Notif_WalkIn" xml:space="preserve">
-    <value>عميل عابر</value>
+    <value>زبون عابر</value>
   </data>
   <data name="Notif_CustomerPaymentDue" xml:space="preserve">
-    <value>دفعة عميل مستحقة</value>
+    <value>دفعة زبون مستحقة</value>
   </data>
   <data name="Notif_SupplierPaymentDue" xml:space="preserve">
     <value>دفعة مورد مستحقة</value>
@@ -1212,7 +1212,7 @@
     <value>هل أنت متأكد من حذف هذا المصروف؟</value>
   </data>
   <data name="POS_ReqCustomer" xml:space="preserve">
-    <value>يرجى اختيار عميل لهذا البيع الآجل.</value>
+    <value>يرجى اختيار زبون لهذا البيع الآجل.</value>
   </data>
   <data name="PO_Predictive" xml:space="preserve">
     <value>قائمة الشراء التوقعية</value>
@@ -1397,7 +1397,7 @@
     <value>تحديث الخدمة</value>
   </data>
   <data name="Msg_UpdateCustomer" xml:space="preserve">
-    <value>تحديث بيانات العميل</value>
+    <value>تحديث بيانات الزبون</value>
   </data>
   <data name="Msg_Scan" xml:space="preserve">
     <value>مسح</value>
@@ -1445,7 +1445,7 @@
     <value>منتهي</value>
   </data>
   <data name="Msg_CustomerName" xml:space="preserve">
-    <value>اسم العميل</value>
+    <value>اسم الزبون</value>
   </data>
   <data name="Msg_LicenseKeyLabel" xml:space="preserve">
     <value>مفتاح الترخيص</value>
@@ -1466,7 +1466,7 @@
     <value>إتمام الارتجاع</value>
   </data>
   <data name="Msg_CashReturn" xml:space="preserve">
-    <value>ارتجاع نقدي (بدون عميل)</value>
+    <value>ارتجاع نقدي (بدون زبون)</value>
   </data>
   <data name="Msg_ReturnOneItem" xml:space="preserve">
     <value>يرجى إضافة صنف واحد على الأقل للارتجاع.</value>
@@ -1532,7 +1532,7 @@
     <value>لا</value>
   </data>
   <data name="Msg_ConfirmDeleteCustomers" xml:space="preserve">
-    <value>هل أنت متأكد من حذف العملاء المختارين؟</value>
+    <value>هل أنت متأكد من حذف الزبائن المختارين؟</value>
   </data>
   <data name="Msg_ConfirmDeleteQuotation" xml:space="preserve">
     <value>هل أنت متأكد من حذف عرض السعر هذا؟</value>
@@ -1605,7 +1605,7 @@
     <value>حذف عرض سعر</value>
   </data>
   <data name="Msg_DeleteCustomer" xml:space="preserve">
-    <value>حذف عميل</value>
+    <value>حذف زبون</value>
   </data>
   <data name="Msg_DeleteSupplier" xml:space="preserve">
     <value>حذف مورد</value>
@@ -2019,7 +2019,7 @@
     <value>إعادة ضبط قاعدة البيانات (حذف الكل)</value>
   </data>
   <data name="Plugins_ResetDbWarning1" xml:space="preserve">
-    <value>تحذير: سيتم حذف جميع البيانات (المخزون، المبيعات، العملاء)! هل أنت متأكد؟</value>
+    <value>تحذير: سيتم حذف جميع البيانات (المخزون، المبيعات، الزبائن)! هل أنت متأكد؟</value>
   </data>
   <data name="Plugins_ResetDbWarning2" xml:space="preserve">
     <value>تأكيد نهائي: لا يمكن التراجع عن هذه العملية. هل تريد مسح قاعدة البيانات حقاً؟</value>
@@ -2157,7 +2157,7 @@
     <value>معاينة الملصقات</value>
   </data>
   <data name="CustForm_ExportSuccess" xml:space="preserve">
-    <value>تم تصدير {0} عملاء إلى CSV بنجاح!</value>
+    <value>تم تصدير {0} زبائن إلى CSV بنجاح!</value>
   </data>
   <data name="CustForm_InvalidFileFormat" xml:space="preserve">
     <value>تنسيق الملف غير صالح. الأعمدة المطلوبة: CustomerName, Phone, Email, Address, CustomerType</value>
@@ -2319,7 +2319,7 @@
     <value>تفاصيل الطلب #{0}</value>
   </data>
   <data name="OrderDetails_Customer" xml:space="preserve">
-    <value>العميل:</value>
+    <value>الزبون:</value>
   </data>
   <data name="OrderDetails_Date" xml:space="preserve">
     <value>التاريخ:</value>
@@ -2364,7 +2364,7 @@
     <value>بحث عن منتجات...</value>
   </data>
   <data name="POS_SelectCustomerForBill" xml:space="preserve">
-    <value>يرجى اختيار عميل مسجل لإضافة الفاتورة إلى حسابه.</value>
+    <value>يرجى اختيار زبون مسجل لإضافة الفاتورة إلى حسابه.</value>
   </data>
   <data name="POS_Currency" xml:space="preserve">
     <value>العملة</value>
@@ -2391,7 +2391,7 @@
     <value>المبلغ المستحق</value>
   </data>
   <data name="POS_CustomerBill" xml:space="preserve">
-    <value>فاتورة العميل</value>
+    <value>فاتورة الزبون</value>
   </data>
   <data name="POS_LowStock" xml:space="preserve">
     <value>منخفض: {0}</value>
@@ -2451,10 +2451,10 @@
     <value>وصف الصنف</value>
   </data>
   <data name="QuotePreview_CustHeader" xml:space="preserve">
-    <value>بيانات العميل</value>
+    <value>بيانات الزبون</value>
   </data>
   <data name="QuotePreview_WalkIn" xml:space="preserve">
-    <value>عميل زائر</value>
+    <value>زبون زائر</value>
   </data>
   <data name="QuotePreview_CompanyInfo" xml:space="preserve">
     <value>الطريق العام - خربة روحا - البقاع الغربي - لبنان | هاتف: +961 78 956 388</value>
@@ -2463,7 +2463,7 @@
     <value>هاتف: +961 78 956 388</value>
   </data>
   <data name="QuotePreview_MetaLine" xml:space="preserve">
-    <value>عرض سعر #: {0}   |   التاريخ: {1}   |   رقم العميل: {2}   |   الصلاحية: {3}</value>
+    <value>عرض سعر #: {0}   |   التاريخ: {1}   |   رقم الزبون: {2}   |   الصلاحية: {3}</value>
   </data>
   <data name="QuotePreview_ValidityDays" xml:space="preserve">
     <value>15 يوماً</value>

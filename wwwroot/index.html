@@ -1144,6 +1144,15 @@
                         <summary data-i18n="print_receipt_size">POS receipt</summary>
                         <div class="settings-collapse-body">
                         <div class="form-group">
+                            <label data-i18n="print_receipt_mode">Printing method</label>
+                            <select class="form-control" id="ps-receipt-mode">
+                                <option value="auto" data-i18n="print_mode_auto">Automatic (recommended)</option>
+                                <option value="direct" data-i18n="print_mode_direct">Direct to receipt printer (ESC/POS)</option>
+                                <option value="driver" data-i18n="print_mode_driver">Windows printer driver</option>
+                            </select>
+                            <p class="form-hint" data-i18n="print_receipt_mode_hint">Use Direct if the receipt comes out as lines of code (SIZE, BITMAP...). Automatic does this for Xprinter label/receipt printers.</p>
+                        </div>
+                        <div class="form-group">
                             <label data-i18n="print_preset">Preset</label>
                             <select class="form-control" id="ps-receipt-preset">
                                 <option value="80">80 mm</option>

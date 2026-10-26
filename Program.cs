@@ -37,6 +37,13 @@ namespace InventorySystem
             }
 
             if (args != null && args.Length > 0 &&
+                args.Any(a => string.Equals(a, "--test-receipt", StringComparison.OrdinalIgnoreCase)))
+            {
+                Environment.Exit(RunReceiptSmokeTest());
+                return;
+            }
+
+            if (args != null && args.Length > 0 &&
                 args.Any(a => string.Equals(a, "--test-i18n", StringComparison.OrdinalIgnoreCase)))
             {
                 Environment.Exit(RunI18nSmokeTest());
@@ -249,6 +256,57 @@ namespace InventorySystem
                 AgentLog("H0", "Program.RunI18nSmokeTest", "exception", new Dictionary<string, object> { ["error"] = ex.Message });
                 Console.WriteLine("I18N SMOKE EXCEPTION: " + ex);
                 return 2;
+            }
+        }
+
+        /// <summary>
+        /// Renders a sample direct (ESC/POS) receipt to Data/test-exports without printing, and reports
+        /// which printers would get the direct path in automatic mode.
+        /// </summary>
+        /// <summary>Requests that change nothing other screens show (sign-in, printing, backup folder...).</summary>
+        private static bool IsNoRefreshPath(string path)
+        {
+            string[] skip =
+            {
+                "/api/login", "/api/logout", "/api/license", "/api/verify-password", "/api/print-settings",
+                "/api/backup/open-folder", "/api/backup/choose-folder", "/api/backup/reset-folder", "/api/backup/create",
+                "/api/backup/auto", "/api/products/upload-image", "/api/settings/nav-order"
+            };
+            foreach (var s in skip)
+                if (path.StartsWith(s, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        private static int RunReceiptSmokeTest()
+        {
+            var report = new System.Text.StringBuilder();
+            try
+            {
+                string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "test-exports");
+                Directory.CreateDirectory(dir);
+                foreach (string name in System.Drawing.Printing.PrinterSettings.InstalledPrinters)
+                    report.AppendLine($"{name}: {(RawPrinterHelper.UsesTsplLabelDriver(name) ? "direct (TSPL label driver)" : "windows driver")}");
+
+                var o = new ReceiptPrintOptions { CustomerName = "زبون نقدي", CurrencySymbol = "$", Subtotal = 7.5m, Total = 7.5m };
+                o.Items.Add(new ReceiptPrintItem { Name = "حليب طازج", Qty = 2, Price = 1.5m, Total = 3m });
+                o.Items.Add(new ReceiptPrintItem { Name = "لبنة بلدية طازجة مع زيت زيتون - عبوة كبيرة 1 كغ", Qty = 1, Price = 0m, Total = 0m });
+                o.Items.Add(new ReceiptPrintItem { Name = "Labneh 500g", Qty = 1, Price = 4.5m, Total = 4.5m });
+                foreach (var w in new[] { 80.0, 58.0 })
+                {
+                    using var bmp = ReceiptPrintHelper.RenderDirectImage(o, w, 2.5, 2.5, 2.5, 2.5);
+                    bmp.Save(Path.Combine(dir, $"receipt-direct-{w}mm.png"), System.Drawing.Imaging.ImageFormat.Png);
+                    byte[] job = RawPrinterHelper.BuildEscPosRaster(bmp, 1);
+                    File.WriteAllBytes(Path.Combine(dir, $"receipt-direct-{w}mm.bin"), job);
+                    report.AppendLine($"{w}mm: {bmp.Width}x{bmp.Height} dots, {job.Length} bytes");
+                }
+                File.WriteAllText(Path.Combine(dir, "receipt-test.txt"), report.ToString());
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                report.AppendLine("FAILED: " + ex);
+                try { File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "receipt-test.txt"), report.ToString()); } catch { }
+                return 1;
             }
         }
 
@@ -591,6 +649,27 @@ namespace InventorySystem
                         return;
                     }
                     await next();
+                });
+
+                // Auto refresh: after any successful change (add / edit / delete / sale ...) from any device,
+                // tell every other open screen (PC window, phones, tablets) to reload what it shows.
+                app.Use(async (ctx, next) =>
+                {
+                    await next();
+                    var req = ctx.Request;
+                    string path = req.Path.Value ?? "";
+                    if (Microsoft.AspNetCore.Http.HttpMethods.IsGet(req.Method)
+                        || Microsoft.AspNetCore.Http.HttpMethods.IsOptions(req.Method)
+                        || Microsoft.AspNetCore.Http.HttpMethods.IsHead(req.Method)
+                        || !path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase)
+                        || ctx.Response.StatusCode >= 400
+                        || IsNoRefreshPath(path))
+                        return;
+                    _ = InventoryBroadcaster.BroadcastObject("DataChanged", new
+                    {
+                        path,
+                        by = req.Headers["X-Client-Id"].ToString()
+                    });
                 });
 
                 // Camera requires HTTPS OR the Chrome Flag (chrome://flags/#unsafely-treat-insecure-origin-as-secure)
@@ -3421,7 +3500,8 @@ namespace InventorySystem
                             ReceiptMarginLeftMm = body.ReceiptMarginLeftMm >= 0 ? body.ReceiptMarginLeftMm
                                 : (body.ReceiptMarginMm >= 0 ? body.ReceiptMarginMm : PrintSettings.DefaultReceiptMarginMm),
                             LabelPrinter = body.LabelPrinter ?? "",
-                            ReceiptPrinter = body.ReceiptPrinter ?? ""
+                            ReceiptPrinter = body.ReceiptPrinter ?? "",
+                            ReceiptMode = PrintSettings.NormalizeReceiptMode(body.ReceiptMode)
                         };
                         PrintSettings.Save(snap);
                         return Microsoft.AspNetCore.Http.Results.Ok(ToPrintSettingsDto(PrintSettings.GetSnapshot(), true));
@@ -3649,6 +3729,7 @@ namespace InventorySystem
             public double ReceiptMarginLeftMm { get; set; } = -1;
             public string LabelPrinter { get; set; }
             public string ReceiptPrinter { get; set; }
+            public string ReceiptMode { get; set; }
         }
 
         private class PrinterProfilePayload
@@ -3733,6 +3814,7 @@ namespace InventorySystem
                 receiptMarginLeftMm = s.ReceiptMarginLeftMm,
                 labelPrinter = s.LabelPrinter ?? "",
                 receiptPrinter = s.ReceiptPrinter ?? "",
+                receiptMode = PrintSettings.NormalizeReceiptMode(s.ReceiptMode),
                 printerProfiles = profiles
             };
         }

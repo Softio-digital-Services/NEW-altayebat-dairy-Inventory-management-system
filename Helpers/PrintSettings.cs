@@ -34,6 +34,8 @@ namespace InventorySystem.Helpers
         public const string LabelPrinterKey = "print.label.printer";
         public const string ReceiptPrinterKey = "print.receipt.printer";
         public const string ProfilesKey = "print.printerProfiles";
+        /// <summary>auto | direct (ESC/POS straight to the printer) | driver (Windows driver).</summary>
+        public const string ReceiptModeKey = "print.receipt.mode";
 
         public const double DefaultLabelWidthMm = 60;
         public const double DefaultLabelHeightMm = 36;
@@ -46,6 +48,13 @@ namespace InventorySystem.Helpers
         public const double DefaultReceiptWidthMm = 80;
         public const double DefaultReceiptHeightMm = 0;
         public const double DefaultReceiptMarginMm = 2.5;
+        public const string DefaultReceiptMode = "auto";
+
+        public static string NormalizeReceiptMode(string mode)
+        {
+            string m = (mode ?? "").Trim().ToLowerInvariant();
+            return m == "direct" || m == "driver" ? m : DefaultReceiptMode;
+        }
 
         public static PrintSettingsSnapshot GetSnapshot()
         {
@@ -75,6 +84,7 @@ namespace InventorySystem.Helpers
                 ReceiptMarginLeftMm = Clamp(GetDouble(ReceiptMarginLeftKey, legacyReceipt), 0, 20),
                 LabelPrinter = GetString(LabelPrinterKey, ""),
                 ReceiptPrinter = GetString(ReceiptPrinterKey, ""),
+                ReceiptMode = NormalizeReceiptMode(GetString(ReceiptModeKey, DefaultReceiptMode)),
                 PrinterProfiles = LoadProfiles()
             };
         }
@@ -104,6 +114,7 @@ namespace InventorySystem.Helpers
             SetDouble(ReceiptMarginLeftKey, Clamp(s.ReceiptMarginLeftMm, 0, 20));
             SetString(LabelPrinterKey, s.LabelPrinter ?? "");
             SetString(ReceiptPrinterKey, s.ReceiptPrinter ?? "");
+            SetString(ReceiptModeKey, NormalizeReceiptMode(s.ReceiptMode));
             if (s.PrinterProfiles != null)
                 SaveProfiles(s.PrinterProfiles);
         }
@@ -425,6 +436,7 @@ namespace InventorySystem.Helpers
         public double ReceiptMarginLeftMm { get; set; } = PrintSettings.DefaultReceiptMarginMm;
         public string LabelPrinter { get; set; } = "";
         public string ReceiptPrinter { get; set; } = "";
+        public string ReceiptMode { get; set; } = PrintSettings.DefaultReceiptMode;
         public Dictionary<string, PrinterProfileEntry> PrinterProfiles { get; set; }
             = new Dictionary<string, PrinterProfileEntry>(StringComparer.OrdinalIgnoreCase);
     }
