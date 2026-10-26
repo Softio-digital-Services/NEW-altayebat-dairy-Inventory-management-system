@@ -71,6 +71,11 @@ namespace InventorySystem
                 return;
             }
 
+            // We are the only running copy, so any browser processes still using our WebView2 profile
+            // are leftovers from a copy that did not close cleanly. They lock the profile and made the
+            // window wait up to a minute on the loading screen; close them before opening the window.
+            CloseLeftoverBrowserProcesses();
+
             // Expose background task for server hosting without blocking UI thread
             _ = Task.Run(() => StartApiServer());
 
@@ -251,6 +256,35 @@ namespace InventorySystem
         /// Writes every export workbook to Data/test-exports and prints the resulting column widths
         /// so clipped columns can be spotted without opening Excel.
         /// </summary>
+        /// <summary>
+        /// Ends msedgewebview2 processes whose --user-data-dir is this app's own WebView2 folder.
+        /// Only called once the single-instance lock is held, so none of them belong to a live window.
+        /// </summary>
+        private static void CloseLeftoverBrowserProcesses()
+        {
+            try
+            {
+                string profile = System.IO.Path.Combine(DatabaseConfig.UserDataDirectory, "WebView2");
+                using var searcher = new System.Management.ManagementObjectSearcher(
+                    "SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name = 'msedgewebview2.exe'");
+                int closed = 0;
+                foreach (System.Management.ManagementObject mo in searcher.Get())
+                {
+                    string cmd = mo["CommandLine"]?.ToString() ?? "";
+                    if (cmd.IndexOf(profile, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    try
+                    {
+                        using var proc = System.Diagnostics.Process.GetProcessById(Convert.ToInt32(mo["ProcessId"]));
+                        proc.Kill(entireProcessTree: true);
+                        closed++;
+                    }
+                    catch { /* already gone */ }
+                }
+                if (closed > 0) InventorySystem.Helpers.StartupTrace.Mark($"closed {closed} leftover browser process(es)");
+            }
+            catch { /* never block startup over this */ }
+        }
+
         private static System.Collections.Generic.List<(string Sheet, System.Data.DataTable Table)> Single(System.Data.DataTable dt) =>
             new() { (dt.TableName, dt) };
 
@@ -1561,7 +1595,7 @@ namespace InventorySystem
                                      COALESCE(c.full_name, 'Walk-in') as customer_name
                               FROM orders o
                               LEFT JOIN customers c ON o.customer_id = c.customer_id
-                              WHERE o.status = 'Draft' AND (o.date_deleted IS NULL OR o.date_deleted = '')
+                              WHERE o.status = 'Draft'
                               ORDER BY o.order_id DESC LIMIT 100");
                         var list = new System.Collections.Generic.List<object>();
                         foreach (System.Data.DataRow row in dt.Rows)

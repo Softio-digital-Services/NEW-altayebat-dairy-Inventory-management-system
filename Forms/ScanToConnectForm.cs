@@ -122,25 +122,45 @@ namespace InventorySystem.Forms
             return $"http://{ip}:{AppHostConfig.HttpPort}";
         }
 
+        /// <summary>
+        /// The address phones should use. Prefers the real Wi-Fi/Ethernet connection that has a router
+        /// (gateway); VPN, Hyper-V/WSL and VirtualBox adapters often come first in Windows' list and
+        /// would put an unreachable address in the QR code.
+        /// </summary>
         public static string GetLocalIpAddress()
         {
             try
             {
+                string best = null;
+                int bestScore = int.MinValue;
                 foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
                 {
                     if (ni.OperationalStatus != OperationalStatus.Up) continue;
                     if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
 
-                    foreach (var addr in ni.GetIPProperties().UnicastAddresses)
+                    var props = ni.GetIPProperties();
+                    bool hasGateway = props.GatewayAddresses.Any(g =>
+                        g.Address.AddressFamily == AddressFamily.InterNetwork && !g.Address.Equals(IPAddress.Any));
+                    string desc = (ni.Name + " " + ni.Description).ToLowerInvariant();
+                    bool looksVirtual = desc.Contains("virtual") || desc.Contains("vethernet") || desc.Contains("hyper-v")
+                        || desc.Contains("vmware") || desc.Contains("virtualbox") || desc.Contains("wsl")
+                        || desc.Contains("vpn") || desc.Contains("tap-") || desc.Contains("tunnel") || desc.Contains("bluetooth");
+
+                    foreach (var addr in props.UnicastAddresses)
                     {
-                        if (addr.Address.AddressFamily == AddressFamily.InterNetwork
-                            && !IPAddress.IsLoopback(addr.Address))
-                        {
-                            string ip = addr.Address.ToString();
-                            if (!ip.StartsWith("169.254")) return ip;
-                        }
+                        if (addr.Address.AddressFamily != AddressFamily.InterNetwork || IPAddress.IsLoopback(addr.Address)) continue;
+                        string ip = addr.Address.ToString();
+                        if (ip.StartsWith("169.254")) continue;
+
+                        int score = 0;
+                        if (hasGateway) score += 100;
+                        if (!looksVirtual) score += 50;
+                        if (ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211
+                            || ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet) score += 20;
+                        if (score > bestScore) { bestScore = score; best = ip; }
                     }
                 }
+                if (best != null) return best;
             }
             catch { }
             return "localhost";
