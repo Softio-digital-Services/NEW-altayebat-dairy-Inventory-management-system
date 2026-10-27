@@ -37,9 +37,9 @@ namespace InventorySystem.Helpers
         /// <summary>auto | direct (ESC/POS straight to the printer) | driver (Windows driver).</summary>
         public const string ReceiptModeKey = "print.receipt.mode";
 
-        public const double DefaultLabelWidthMm = 60;
-        public const double DefaultLabelHeightMm = 36;
-        public const double DefaultLabelGapMm = 5;
+        public const double DefaultLabelWidthMm = 57;
+        public const double DefaultLabelHeightMm = 40;
+        public const double DefaultLabelGapMm = 3;
         public const double DefaultLabelMarginMm = 2;
         public const int DefaultLabelColumns = 0; // 0 = auto
         public const string DefaultLabelPaperMode = "sheet";
@@ -117,6 +117,56 @@ namespace InventorySystem.Helpers
             SetString(ReceiptModeKey, NormalizeReceiptMode(s.ReceiptMode));
             if (s.PrinterProfiles != null)
                 SaveProfiles(s.PrinterProfiles);
+        }
+
+        /// <summary>
+        /// Settings page save: each print remembers its sizes per printer and that profile wins over the
+        /// defaults, so the selected printers' profiles must take the new values too, or they have no effect.
+        /// </summary>
+        public static void SyncSelectedPrinterProfiles(PrintSettingsSnapshot s)
+        {
+            if (s == null) return;
+            FeatureFlags.EnsureTable();
+            var map = LoadProfiles();
+            if (!string.IsNullOrWhiteSpace(s.LabelPrinter))
+            {
+                map.TryGetValue(s.LabelPrinter.Trim(), out var le);
+                le ??= new PrinterProfileEntry();
+                le.Label = NormalizeLabelProfile(new PrinterJobProfile
+                {
+                    WidthMm = Clamp(s.LabelWidthMm, 20, 210),
+                    HeightMm = Clamp(s.LabelHeightMm, 10, 297),
+                    GapMm = Clamp(s.LabelGapMm, 0, 20),
+                    MarginMm = Clamp(s.LabelMarginMm, 0, 20),
+                    MarginTopMm = Clamp(s.LabelMarginTopMm, 0, 30),
+                    MarginRightMm = Clamp(s.LabelMarginRightMm, 0, 30),
+                    MarginBottomMm = Clamp(s.LabelMarginBottomMm, 0, 30),
+                    MarginLeftMm = Clamp(s.LabelMarginLeftMm, 0, 30),
+                    Columns = ClampInt(s.LabelColumns, 0, 4),
+                    PaperMode = NormalizePaperMode(s.LabelPaperMode),
+                    PageWidthMm = Clamp(s.LabelPageWidthMm, 40, 330),
+                    PageHeightMm = Clamp(s.LabelPageHeightMm, 40, 500)
+                });
+                map[s.LabelPrinter.Trim()] = le;
+            }
+            if (!string.IsNullOrWhiteSpace(s.ReceiptPrinter))
+            {
+                map.TryGetValue(s.ReceiptPrinter.Trim(), out var re);
+                re ??= new PrinterProfileEntry();
+                re.Receipt = NormalizeReceiptProfile(new PrinterJobProfile
+                {
+                    WidthMm = Clamp(s.ReceiptWidthMm, 40, 120),
+                    HeightMm = Clamp(s.ReceiptHeightMm, 0, 500),
+                    MarginMm = Clamp(s.ReceiptMarginMm, 0, 15),
+                    MarginTopMm = Clamp(s.ReceiptMarginTopMm, 0, 20),
+                    MarginRightMm = Clamp(s.ReceiptMarginRightMm, 0, 20),
+                    MarginBottomMm = Clamp(s.ReceiptMarginBottomMm, 0, 20),
+                    MarginLeftMm = Clamp(s.ReceiptMarginLeftMm, 0, 20),
+                    PaperMode = "roll"
+                });
+                map[s.ReceiptPrinter.Trim()] = re;
+            }
+            SaveProfiles(map);
         }
 
         public static PrintSettingsSnapshot SavePrinterProfile(string printerName, string jobType, PrinterJobProfile profile)

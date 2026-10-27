@@ -802,9 +802,9 @@ let lang = localStorage.getItem('generic_lang')   || 'en';
 let currentUser = null;
 let featureFlags = { scaleEnabled: false, quickSaleEnabled: false };
 let printSettings = {
-    labelWidthMm: 60,
-    labelHeightMm: 36,
-    labelGapMm: 5,
+    labelWidthMm: 57,
+    labelHeightMm: 40,
+    labelGapMm: 3,
     labelMarginMm: 2,
     labelMarginTopMm: 2,
     labelMarginRightMm: 2,
@@ -827,6 +827,7 @@ let printSettings = {
     printerProfiles: {}
 };
 const LABEL_PRESETS = {
+    '57x40': { w: 57, h: 40 },
     '60x36': { w: 60, h: 36 },
     '40x30': { w: 40, h: 30 },
     '50x25': { w: 50, h: 25 },
@@ -957,9 +958,9 @@ function applyPrintSettings(s) {
     if (!s) return;
     const margin = (v, fb) => (Number(v) >= 0 ? Number(v) : fb);
     printSettings = {
-        labelWidthMm: Number(s.labelWidthMm) || 60,
-        labelHeightMm: Number(s.labelHeightMm) || 36,
-        labelGapMm: margin(s.labelGapMm, 5),
+        labelWidthMm: Number(s.labelWidthMm) || 57,
+        labelHeightMm: Number(s.labelHeightMm) || 40,
+        labelGapMm: margin(s.labelGapMm, 3),
         labelMarginMm: margin(s.labelMarginMm, 2),
         labelMarginTopMm: margin(s.labelMarginTopMm, margin(s.labelMarginMm, 2)),
         labelMarginRightMm: margin(s.labelMarginRightMm, margin(s.labelMarginMm, 2)),
@@ -1127,6 +1128,7 @@ function fillBarcodePrintSizeControls(printerName) {
     const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
     setVal('bpd-label-w', p.widthMm);
     setVal('bpd-label-h', p.heightMm);
+    setVal('bpd-label-gap', p.gapMm);
     setVal('bpd-label-margin', p.marginMm);
     setVal('bpd-paper-mode', p.paperMode);
     setVal('bpd-page-w', p.pageWidthMm);
@@ -1154,7 +1156,7 @@ function getLiveLabelSize() {
     return {
         labelWidthMm: readNum('bpd-label-w', printSettings.labelWidthMm, 20, 210),
         labelHeightMm: readNum('bpd-label-h', printSettings.labelHeightMm, 10, 297),
-        labelGapMm: printSettings.labelGapMm,
+        labelGapMm: readNum('bpd-label-gap', printSettings.labelGapMm, 0, 20),
         marginMm: readNum('bpd-label-margin', printSettings.labelMarginMm, 0, 20),
         paperMode: document.getElementById('bpd-paper-mode')?.value === 'roll' ? 'roll' : 'sheet',
         pageWidthMm: readNum('bpd-page-w', printSettings.labelPageWidthMm, 40, 330),
@@ -1183,9 +1185,9 @@ async function loadPrintSettings() {
 
 async function savePrintSettingsFromForm() {
     const body = {
-        labelWidthMm: readNum('ps-label-w', 60, 20, 210),
-        labelHeightMm: readNum('ps-label-h', 36, 10, 297),
-        labelGapMm: readNum('ps-label-gap', 5, 0, 20),
+        labelWidthMm: readNum('ps-label-w', 57, 20, 210),
+        labelHeightMm: readNum('ps-label-h', 40, 10, 297),
+        labelGapMm: readNum('ps-label-gap', 3, 0, 20),
         labelMarginTopMm: readNum('ps-label-mt', 2, 0, 30),
         labelMarginRightMm: readNum('ps-label-mr', 2, 0, 30),
         labelMarginBottomMm: readNum('ps-label-mb', 2, 0, 30),
@@ -1271,7 +1273,7 @@ function wirePrintSettingsUi() {
         if (h) h.value = p.h;
         applyBarcodePrintLayoutPreview();
     });
-    ['bpd-label-w', 'bpd-label-h', 'bpd-label-margin', 'bpd-paper-mode', 'bpd-page-w', 'bpd-page-h'].forEach(id => {
+    ['bpd-label-w', 'bpd-label-h', 'bpd-label-gap', 'bpd-label-margin', 'bpd-paper-mode', 'bpd-page-w', 'bpd-page-h'].forEach(id => {
         document.getElementById(id)?.addEventListener('change', () => {
             if (id === 'bpd-paper-mode') toggleSheetPageRows();
             if ((id === 'bpd-label-w' || id === 'bpd-label-h') && bpdPreset) {

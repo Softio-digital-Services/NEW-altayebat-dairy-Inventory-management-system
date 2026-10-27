@@ -52,6 +52,8 @@ namespace InventorySystem.Helpers
         private static int _gapY;
         private static int _maxCols;
         private static bool _rollMode;
+        // Resolved sizes in mm for the direct (TSPL) path
+        private static double _wMm, _hMm, _gapMm, _mTopMm, _mRightMm, _mBottomMm, _mLeftMm;
 
         /// <summary>
         /// Opens a compact themed PrintPreviewDialog (legacy path).
@@ -89,12 +91,225 @@ namespace InventorySystem.Helpers
             PrintDocument pd = BuildDocument(items, options);
             try
             {
+                string printer = pd.PrinterSettings.PrinterName;
+                // TSC/Xprinter label drivers squeeze a whole page onto the label; send exact-size labels instead
+                if (RawPrinterHelper.UsesTsplLabelDriver(printer)
+                    && PrintSettings.NormalizeReceiptMode(PrintSettings.GetSnapshot().ReceiptMode) != "driver")
+                {
+                    PrintLabelsTspl(printer, Math.Max(1, Math.Min(99, options.Copies)));
+                    return;
+                }
                 pd.Print();
             }
             finally
             {
                 pd.Dispose();
             }
+        }
+
+        /// <summary>
+        /// One label per sticker, drawn at the printer's 203 dpi and sent as TSPL (SIZE / GAP / BITMAP / PRINT).
+        /// The printer's gap sensor lines every label up with the next sticker.
+        /// </summary>
+        private static void PrintLabelsTspl(string printer, int copies)
+        {
+            RawPrinterHelper.SendRaw(printer, BuildTsplJob(copies), "Labels");
+        }
+
+        /// <summary>The TSPL job for the current print queue (public for the smoke test).</summary>
+        public static byte[] BuildTsplJob(int copies)
+        {
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            var job = new List<byte>();
+            void Cmd(string line) => job.AddRange(System.Text.Encoding.ASCII.GetBytes(line + "\r\n"));
+
+            // Each label advances exactly sticker height + gap. Relying on the gap sensor made labels
+            // creep by one gap per sticker on the XP-365B, so the feed is measured, not sensed.
+            Cmd(string.Format(inv, "SIZE {0:0.##} mm,{1:0.##} mm", _wMm, _hMm + Math.Max(0, _gapMm)));
+            Cmd("GAP 0 mm,0 mm");
+            Cmd("DIRECTION 0,0");
+            Cmd("REFERENCE 0,0");
+            Cmd("OFFSET 0 mm");
+            Cmd("SET PEEL OFF");
+            Cmd("SET CUTTER OFF");
+            Cmd("SET TEAR ON");
+
+            // Labels to print, honouring the page range (one label = one page on a roll)
+            var labels = new List<LabelPrintItem>();
+            for (int i = 0; i < _printQueue.Count; i++)
+                if (_allowedPages == null || _allowedPages.Contains(i + 1)) labels.Add(_printQueue[i]);
+
+            int k = 0;
+            while (k < labels.Count)
+            {
+                // Same product printed n times -> one image, PRINT 1,n
+                int n = 1;
+                while (k + n < labels.Count && SameLabel(labels[k], labels[k + n])) n++;
+                using (var bmp = RenderLabelBitmap(labels[k]))
+                {
+                    int bytesPerRow = (bmp.Width + 7) / 8;
+                    byte[] data = PackTsplBitmap(bmp, bytesPerRow);
+                    Cmd("CLS");
+                    job.AddRange(System.Text.Encoding.ASCII.GetBytes(string.Format(inv, "BITMAP 0,0,{0},{1},0,", bytesPerRow, bmp.Height)));
+                    job.AddRange(data);
+                    Cmd("");
+                    Cmd(string.Format(inv, "PRINT 1,{0}", n * copies));
+                }
+                k += n;
+            }
+            return job.ToArray();
+        }
+
+        /// <summary>Prepares the queue and sizes the way PrintLabels does, without printing (smoke test).</summary>
+        public static void PrepareForTest(List<LabelPrintItem> items, LabelPrintOptions options)
+        {
+            using (BuildDocument(items, options)) { }
+        }
+
+        private static bool SameLabel(LabelPrintItem a, LabelPrintItem b) =>
+            a.Name == b.Name && a.SKU == b.SKU && a.Price == b.Price;
+
+        /// <summary>TSPL bitmap rows: bit 0 = print (black), bit 1 = blank.</summary>
+        private static byte[] PackTsplBitmap(Bitmap bmp, int bytesPerRow)
+        {
+            var data = new byte[bytesPerRow * bmp.Height];
+            for (int i = 0; i < data.Length; i++) data[i] = 0xFF;
+            var bd = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height),
+                System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            try
+            {
+                var line = new byte[bd.Stride];
+                for (int y = 0; y < bmp.Height; y++)
+                {
+                    System.Runtime.InteropServices.Marshal.Copy(bd.Scan0 + y * bd.Stride, line, 0, bd.Stride);
+                    for (int x = 0; x < bmp.Width; x++)
+                    {
+                        int i = x * 4;
+                        int lum = (line[i] * 11 + line[i + 1] * 59 + line[i + 2] * 30) / 100;
+                        if (lum < 140) data[y * bytesPerRow + (x >> 3)] &= (byte)~(0x80 >> (x & 7));
+                    }
+                }
+            }
+            finally { bmp.UnlockBits(bd); }
+            return data;
+        }
+
+        /// <summary>
+        /// The label as a 203 dpi image the size of the sticker: full name (up to two lines, shrunk to fit),
+        /// a scannable Code 128 barcode with whole-dot bars, the code and the price. No border.
+        /// </summary>
+        public static Bitmap RenderLabelBitmap(LabelPrintItem item)
+        {
+            const float dpi = 203.2f;
+            const float dotsPerMm = dpi / 25.4f;
+            int W = Math.Max(80, (int)Math.Round(_wMm * dotsPerMm));
+            int H = Math.Max(60, (int)Math.Round(_hMm * dotsPerMm));
+            int ml = (int)Math.Round(Math.Max(1, _mLeftMm) * dotsPerMm), mr = (int)Math.Round(Math.Max(1, _mRightMm) * dotsPerMm);
+            int mt = (int)Math.Round(Math.Max(1, _mTopMm) * dotsPerMm), mb = (int)Math.Round(Math.Max(1, _mBottomMm) * dotsPerMm);
+            int areaW = Math.Max(40, W - ml - mr);
+
+            var bmp = new Bitmap(W, H, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            bmp.SetResolution(dpi, dpi);
+            using var g = Graphics.FromImage(bmp);
+            g.Clear(Color.White);
+            g.PageUnit = GraphicsUnit.Pixel;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            g.SmoothingMode = SmoothingMode.None;
+
+            string name = item.Name ?? "";
+            string code = string.IsNullOrWhiteSpace(item.SKU) ? "" : item.SKU.Trim();
+            string price = CurrencyService.Format(item.Price);
+            bool rtl = StartsRightToLeft(name);
+
+            // Fonts are sized for a 36 mm tall label; smaller/larger labels scale with it
+            float k = Math.Max(0.6f, Math.Min(1.6f, (float)(_hMm / 36.0)));
+            using var priceFont = new Font("Segoe UI", 11f * k, FontStyle.Bold);
+            using var codeFont = new Font("Consolas", 7f * k);
+            int priceH = (int)Math.Ceiling(priceFont.GetHeight(g));
+            int codeH = code.Length > 0 ? (int)Math.Ceiling(codeFont.GetHeight(g)) : 0;
+
+            // "Arabic name (English name)": each part on its own line, so brackets never end up
+            // in the wrong place when mixed Arabic/English text wraps
+            var split = System.Text.RegularExpressions.Regex.Match(name, @"^\s*(.+?)\s*\((.+)\)\s*$");
+            string line1 = name, line2 = null;
+            if (split.Success && StartsRightToLeft(split.Groups[1].Value) && !StartsRightToLeft(split.Groups[2].Value))
+            {
+                line1 = split.Groups[1].Value;
+                line2 = split.Groups[2].Value;
+            }
+
+            var nameFmt = new StringFormat { Alignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisWord };
+            if (rtl) nameFmt.FormatFlags |= StringFormatFlags.DirectionRightToLeft;
+            var oneLine = new StringFormat(nameFmt) { Trimming = StringTrimming.EllipsisCharacter };
+            oneLine.FormatFlags |= StringFormatFlags.NoWrap;
+            var latinLine = new StringFormat { Alignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
+
+            // Biggest font (9pt down to 6pt) that fits: two parts -> one line each, otherwise two wrapped lines
+            Font nameFont = null;
+            int nameH = 0;
+            for (float pt = 9f * k; pt >= 6f * k - 0.01f; pt -= 0.5f)
+            {
+                nameFont?.Dispose();
+                nameFont = new Font("Segoe UI", pt, FontStyle.Bold);
+                float lineH = nameFont.GetHeight(g);
+                if (line2 != null)
+                {
+                    nameH = (int)Math.Ceiling(lineH * 2);
+                    if (g.MeasureString(line1, nameFont).Width <= areaW && g.MeasureString(line2, nameFont).Width <= areaW) break;
+                }
+                else
+                {
+                    var size = g.MeasureString(name, nameFont, areaW, nameFmt);
+                    nameH = (int)Math.Ceiling(Math.Min(size.Height, lineH * 2));
+                    if (size.Height <= lineH * 2 + 1) break;
+                }
+            }
+            using (nameFont)
+            {
+                int y = mt;
+                if (line2 != null)
+                {
+                    int lh = nameH / 2;
+                    g.DrawString(line1, nameFont, Brushes.Black, new RectangleF(ml, y, areaW, lh), oneLine);
+                    g.DrawString(line2, nameFont, Brushes.Black, new RectangleF(ml, y + lh, areaW, lh), latinLine);
+                }
+                else
+                {
+                    g.DrawString(name, nameFont, Brushes.Black, new RectangleF(ml, y, areaW, nameH), nameFmt);
+                }
+                y += nameH + 4;
+
+                int barH = H - mb - priceH - codeH - y - 4;
+                if (code.Length > 0 && barH >= 24)
+                {
+                    int modules = BarcodeService.Code128ModuleCount(code);
+                    // Whole-dot module width (2-3 dots scans best); quiet zone 10 modules each side
+                    int module = Math.Max(1, Math.Min(3, areaW / (modules + 20)));
+                    int bx = (W - modules * module) / 2;
+                    BarcodeService.DrawCode128(g, code, bx, y, module, barH);
+                    y += barH + 2;
+                    var center = new StringFormat { Alignment = StringAlignment.Center };
+                    g.DrawString(code, codeFont, Brushes.Black, new RectangleF(ml, y, areaW, codeH), center);
+                    y += codeH;
+                }
+                else
+                {
+                    y = Math.Max(y, (H - priceH) / 2);
+                }
+                g.DrawString(price, priceFont, Brushes.Black, new RectangleF(ml, y, areaW, priceH),
+                    new StringFormat { Alignment = StringAlignment.Center });
+            }
+            return bmp;
+        }
+
+        private static bool StartsRightToLeft(string s)
+        {
+            foreach (char c in s ?? "")
+            {
+                if (c >= 0x0590 && c <= 0x08FF) return true; // Hebrew / Arabic
+                if (char.IsLetter(c)) return false;
+            }
+            return false;
         }
 
         private static PrintDocument BuildDocument(List<LabelPrintItem> items, LabelPrintOptions options)
@@ -132,6 +347,8 @@ namespace InventorySystem.Helpers
                 : (resolved.PageHeightMm > 0 ? resolved.PageHeightMm : defaults.LabelPageHeightMm);
 
             _rollMode = string.Equals(mode, "roll", StringComparison.OrdinalIgnoreCase);
+            _wMm = wMm; _hMm = hMm; _gapMm = gapMm;
+            _mTopMm = mTop; _mRightMm = mRight; _mBottomMm = mBottom; _mLeftMm = mLeft;
 
             _labelWidth = Math.Max(1, PrintSettings.MmToHundredths(wMm));
             _labelHeight = Math.Max(1, PrintSettings.MmToHundredths(hMm));
@@ -364,10 +581,14 @@ namespace InventorySystem.Helpers
                     int targetH = Math.Max(16, (int)barcodeH);
                     using (Bitmap barcode = bs.RenderCode128(code == "—" ? "0" : code, targetW, targetH))
                     {
-                        int bw = Math.Min(barcode.Width, targetW);
-                        int bh = Math.Min(barcode.Height, targetH);
-                        int bx = bounds.X + (bounds.Width - bw) / 2;
-                        g.DrawImage(barcode, new Rectangle(bx, (int)y, bw, bh));
+                        int bx = bounds.X + (bounds.Width - targetW) / 2;
+                        var oldMode = g.InterpolationMode;
+                        var oldOffset = g.PixelOffsetMode;
+                        g.InterpolationMode = InterpolationMode.NearestNeighbor; // keep bars sharp
+                        g.PixelOffsetMode = PixelOffsetMode.Half;
+                        g.DrawImage(barcode, new Rectangle(bx, (int)y, targetW, targetH));
+                        g.InterpolationMode = oldMode;
+                        g.PixelOffsetMode = oldOffset;
                     }
                 }
                 catch

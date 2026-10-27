@@ -299,6 +299,27 @@ namespace InventorySystem
                     File.WriteAllBytes(Path.Combine(dir, $"receipt-direct-{w}mm.bin"), job);
                     report.AppendLine($"{w}mm: {bmp.Width}x{bmp.Height} dots, {job.Length} bytes");
                 }
+                // Barcode labels: rendered at the printer's 203 dpi exactly as sent to a TSPL printer
+                string[] codes = { "628100701002", "62810070100", "CHS-302", "ITM-ABC-001", "5" };
+                foreach (var size in new[] { (57.0, 40.0), (60.0, 36.0), (40.0, 30.0) })
+                {
+                    for (int c = 0; c < codes.Length; c++)
+                    {
+                        var item = new InventorySystem.Helpers.LabelPrintItem
+                        {
+                            Name = c == 0 ? "أكياس تفريغ هواء للأجبان (Vacuum Cheese Bags)" : c == 1 ? "جبنة جودا معتقة بالكمون (Aged Gouda with Cumin)" : "Labneh 500g",
+                            SKU = codes[c], Price = 0.15m, Quantity = 1
+                        };
+                        ThermalLabelHelper.PrepareForTest(new List<InventorySystem.Helpers.LabelPrintItem> { item }, new LabelPrintOptions
+                        {
+                            LabelWidthMm = size.Item1, LabelHeightMm = size.Item2, LabelGapMm = 3, MarginMm = 2, PaperMode = "roll"
+                        });
+                        using var lb = ThermalLabelHelper.RenderLabelBitmap(item);
+                        lb.Save(Path.Combine(dir, $"label-{size.Item1}x{size.Item2}-{c}.png"), System.Drawing.Imaging.ImageFormat.Png);
+                        if (c == 0)
+                            File.WriteAllBytes(Path.Combine(dir, $"label-{size.Item1}x{size.Item2}.tspl"), ThermalLabelHelper.BuildTsplJob(1));
+                    }
+                }
                 File.WriteAllText(Path.Combine(dir, "receipt-test.txt"), report.ToString());
                 return 0;
             }
@@ -3504,6 +3525,7 @@ namespace InventorySystem
                             ReceiptMode = PrintSettings.NormalizeReceiptMode(body.ReceiptMode)
                         };
                         PrintSettings.Save(snap);
+                        PrintSettings.SyncSelectedPrinterProfiles(PrintSettings.GetSnapshot());
                         return Microsoft.AspNetCore.Http.Results.Ok(ToPrintSettingsDto(PrintSettings.GetSnapshot(), true));
                     }
                     catch (Exception ex)
