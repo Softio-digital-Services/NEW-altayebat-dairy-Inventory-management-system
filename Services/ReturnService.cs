@@ -42,10 +42,10 @@ namespace InventorySystem.Services
                         new SqliteParameter("@qty", item.Quantity),
                         new SqliteParameter("@refund", item.RefundAmount));
 
-                    // Update stock
+                    // Update stock (weighed items go back in the grams that were sold)
                     string sqlStock = "UPDATE parts SET quantity_in_stock = quantity_in_stock + @qty WHERE id = @pid AND is_stock_tracked = 1 AND (item_type IS NULL OR item_type != 'Service')";
                     DatabaseHelper.ExecuteNonQuery(sqlStock,
-                        new SqliteParameter("@qty", item.Quantity),
+                        new SqliteParameter("@qty", RestockAmount(orderId, item.PartId, item.Quantity)),
                         new SqliteParameter("@pid", item.PartId));
 
                     // Log stock movement
@@ -96,6 +96,30 @@ namespace InventorySystem.Services
                 throw;
             }
         }
+        /// <summary>
+        /// Stock to put back for a returned order line. Weighed lines restock the grams that were sold
+        /// (share of the returned quantity); normal items restock the quantity.
+        /// </summary>
+        private static int RestockAmount(int orderId, int partId, int returnedQty)
+        {
+            try
+            {
+                var dt = DatabaseHelper.ExecuteDataTable(
+                    "SELECT COALESCE(SUM(weight_grams), 0) AS g, COALESCE(SUM(quantity), 0) AS q FROM order_items WHERE order_id = @oid AND part_id = @pid",
+                    new SqliteParameter("@oid", orderId),
+                    new SqliteParameter("@pid", partId));
+                if (dt.Rows.Count > 0)
+                {
+                    long grams = Convert.ToInt64(dt.Rows[0]["g"]);
+                    long sold = Convert.ToInt64(dt.Rows[0]["q"]);
+                    if (grams > 0 && sold > 0)
+                        return (int)Math.Round((double)grams * Math.Min(returnedQty, sold) / sold);
+                }
+            }
+            catch { }
+            return returnedQty;
+        }
+
         public void ProcessBlindReturn(List<ReturnItemInfo> itemsToReturn, string reason, int customerId = -1)
         {
             try
@@ -130,7 +154,7 @@ namespace InventorySystem.Services
                         new SqliteParameter("@qty", item.Quantity),
                         new SqliteParameter("@refund", item.RefundAmount));
 
-                    // Update stock
+                    // Update stock (blind returns of weight products are entered in grams by the caller)
                     string sqlStock = "UPDATE parts SET quantity_in_stock = quantity_in_stock + @qty WHERE id = @pid AND is_stock_tracked = 1 AND (item_type IS NULL OR item_type != 'Service')";
                     DatabaseHelper.ExecuteNonQuery(sqlStock,
                         new SqliteParameter("@qty", item.Quantity),
@@ -149,20 +173,16 @@ namespace InventorySystem.Services
                 // 4. Update Customer Balance if applicable
                 if (customerId > 0)
                 {
-                    string sqlUpdateBalance = "UPDATE customers SET current_balance = current_balance - @refund WHERE id = @cid";
-                    DatabaseHelper.ExecuteNonQuery(sqlUpdateBalance,
+                    // Same bookkeeping as a linked return: lower the balance, record a credit payment
+                    DatabaseHelper.ExecuteNonQuery(
+                        "UPDATE customers SET current_balance = current_balance - @refund WHERE customer_id = @cid",
                         new SqliteParameter("@refund", totalRefund),
-                        new SqliteParameter("@cid", customerId)
-                    );
-
-                    string sqlTrans = "INSERT INTO customer_transactions (customer_id, transaction_date, amount, transaction_type, reference, notes) " +
-                                      "VALUES (@cid, datetime('now'), @amt, 'PAYMENT', @ref, @notes)";
-                    DatabaseHelper.ExecuteNonQuery(sqlTrans,
+                        new SqliteParameter("@cid", customerId));
+                    DatabaseHelper.ExecuteNonQuery(
+                        "INSERT INTO payments (entity_type, entity_id, amount, payment_date, notes) VALUES ('Customer', @cid, @amount, datetime('now'), @notes)",
                         new SqliteParameter("@cid", customerId),
-                        new SqliteParameter("@amt", totalRefund),
-                        new SqliteParameter("@ref", "Return #" + returnId),
-                        new SqliteParameter("@notes", "[Return] Refund for Blind Return")
-                    );
+                        new SqliteParameter("@amount", -totalRefund),
+                        new SqliteParameter("@notes", "[Return] Refund (no receipt)"));
                 }
 
                 DatabaseHelper.LogTransaction("BLIND_RETURN", "Unlinked Items", "Refund Total: " + totalRefund);

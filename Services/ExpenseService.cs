@@ -68,7 +68,7 @@ namespace InventorySystem.Services
 
         public decimal GetTotalExpenses(int month, int year)
         {
-            string sql = "SELECT SUM(amount) FROM expenses WHERE MONTH(expense_date) = @m AND YEAR(expense_date) = @y AND date_deleted IS NULL";
+            string sql = "SELECT SUM(amount) FROM expenses WHERE CAST(strftime('%m', expense_date) AS INTEGER) = @m AND CAST(strftime('%Y', expense_date) AS INTEGER) = @y AND date_deleted IS NULL";
             object result = DatabaseHelper.ExecuteScalar<object>(sql, 
                 new SqliteParameter("@m", month),
                 new SqliteParameter("@y", year));

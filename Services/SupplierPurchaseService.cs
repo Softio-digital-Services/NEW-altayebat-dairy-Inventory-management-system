@@ -147,6 +147,13 @@ namespace InventorySystem.Services
             if (existingId.HasValue)
             {
                 partId = existingId.Value;
+                // Weight products keep stock in grams; the purchase quantity is in kg
+                bool byWeight = DatabaseHelper.ExecuteScalar<int>(
+                    @"SELECT CASE WHEN COALESCE(sell_by_weight, 0) = 1
+                                   OR LOWER(COALESCE(unit_of_measure, '')) IN ('kg','g','gram','grams','kilo','kilogram','kilograms')
+                              THEN 1 ELSE 0 END FROM parts WHERE id = @id",
+                    new SqliteParameter("@id", partId)) == 1;
+                if (byWeight) qtyInt = (int)Math.Round(Math.Max(0m, item.Quantity) * 1000m);
                 DatabaseHelper.ExecuteNonQuery(
                     @"UPDATE parts SET
                         quantity_in_stock = COALESCE(quantity_in_stock, 0) + @qty,

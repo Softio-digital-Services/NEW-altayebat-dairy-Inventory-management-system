@@ -8101,3 +8101,19 @@ body.rtl .titlebar .tb-menu { direction: rtl; }
     #pos .pos-products { flex: 0 0 auto; overflow: visible; min-height: auto; }
     body:has(#pos.active) .main-content { overflow-y: auto !important; }
 }
+
+/* ---------- Number fields: always left-to-right (cursor/backspace behave the same in Arabic) ---------- */
+input[type="number"], input[inputmode="decimal"], input[inputmode="numeric"], .pos-total-input, .scale-price-input {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+body.rtl input[type="number"], body.rtl input[inputmode="decimal"], body.rtl input[inputmode="numeric"] { text-align: right; }
+
+/* ---------- Weight (kg) helpers ---------- */
+.grams-eq-hint { display: block; margin-top: 3px; font-size: 0.74rem; font-weight: 600; color: var(--text-muted); min-height: 1em; }
+.cart-weight-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 0 8px; height: 26px; border-radius: 6px;
+    background: #e0f2fe; color: #0369a1; font-weight: 700; font-size: 0.8rem; white-space: nowrap;
+}
+.cart-weight-chip .material-symbols-rounded { font-size: 16px; }

@@ -163,6 +163,7 @@ namespace InventorySystem.Helpers
             {
                 C("category_name", "Category", "الفئة"),
                 C("quantity_sold", "Quantity Sold", "الكمية المباعة"),
+                C("kg_sold", "Sold by Weight (kg)", "المباع بالوزن (كغ)"),
                 C("total_sales", "Sales", "المبيعات"),
                 C("profit", "Profit", "الربح"),
                 C("share", "Share of Sales %", "النسبة من المبيعات %"),

@@ -990,7 +990,7 @@ namespace InventorySystem.Services
             foreach (DataRow r in cats.Rows)
                 r["share"] = catTotal > 0 ? Math.Round(Dec(r, "total_sales") / catTotal * 100m, 1) : 0m;
             MarkCurrency(cats, "total_sales", "profit");
-            MarkQuantity(cats, "quantity_sold");
+            MarkQuantity(cats, "quantity_sold", "kg_sold");
             MarkFormat(cats, "0.0", "share");
             sheets.Add((ExportLocalizer.Sheet("report_categories", ar), ExportLocalizer.Localize(cats, "report_categories", ar)));
 

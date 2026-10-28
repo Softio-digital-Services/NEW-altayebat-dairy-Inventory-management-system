@@ -1246,12 +1246,12 @@
             </div>
             <div class="scale-readout">
                 <div class="scale-readout-item">
-                    <span class="scale-readout-label" data-i18n="scale_weight_lbl">Weight (g)</span>
+                    <span class="scale-readout-label" data-i18n="scale_weight_lbl">Weight (kg)</span>
                     <div class="scale-weight-row">
-                        <input type="number" class="scale-weight-input" id="scaleManualWeight" min="0" step="1" value="0" inputmode="numeric" data-i18n-title="weight_in_g" data-i18n-aria="1" title="Weight in grams (g)" aria-label="Weight in grams (g)">
-                        <small data-i18n="unit_g">g</small>
+                        <input type="number" class="scale-weight-input" id="scaleManualWeight" min="0" step="0.001" value="" placeholder="0.000" inputmode="decimal" data-i18n-title="weight_in_kg" data-i18n-aria="1" title="Weight in kilograms (kg)" aria-label="Weight in kilograms (kg)">
+                        <small data-i18n="unit_kg">kg</small>
                     </div>
-                    <div class="scale-manual-hint" id="scaleManualHint" data-i18n="scale_manual_hint">Enter grams (g). Example: 1000 = 1.000 kg | 1250 = 1.250 kg</div>
+                    <div class="scale-manual-hint" id="scaleManualHint" data-i18n="scale_manual_hint">Type kilograms. Example: 0.250 = 250 g | 1.5 = 1 kg 500 g</div>
                 </div>
                 <div class="scale-readout-item">
                     <div class="scale-price-head">
@@ -2239,7 +2239,7 @@ Accepted By: __________________________</p>
                 <button class="close-btn" data-close="stock-modal"><span class="material-symbols-rounded">close</span></button></div>
             <form id="stock-form">
                 <input type="hidden" id="stock-product-id">
-                <div class="form-group"><label data-i18n="col_stock">Change</label><input class="form-control" id="stock-change" type="number" step="1" required placeholder="+/-"></div>
+                <div class="form-group"><label id="stock-change-label" data-i18n="col_stock">Change</label><input class="form-control" id="stock-change" type="number" step="1" required placeholder="+/-"></div>
                 <div class="form-group"><label data-i18n="return_reason">Reason</label><input class="form-control" id="stock-reason" dir="auto"></div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" data-close="stock-modal" data-i18n="cancel">Cancel</button>
@@ -2332,7 +2332,7 @@ Accepted By: __________________________</p>
                         <input type="hidden" id="sp-part-id" value="">
                     </div>
                     <div class="form-group"><label data-i18n="col_category">Category</label><input class="form-control" id="sp-category" list="sp-category-list" placeholder="General" dir="auto"><datalist id="sp-category-list"></datalist></div>
-                    <div class="form-group sp-qty"><label data-i18n="col_qty">Qty</label><input class="form-control" id="sp-qty" type="number" step="0.01" min="0.01" value="1"></div>
+                    <div class="form-group sp-qty"><label id="sp-qty-label" data-i18n="col_qty">Qty</label><input class="form-control" id="sp-qty" type="number" step="0.01" min="0.01" value="1"></div>
                     <div class="form-group sp-price"><label data-i18n="col_price">Price</label><input class="form-control" id="sp-price" type="number" step="0.01" min="0" value="0"></div>
                 </div>
                 <div class="form-row supp-purchase-row">

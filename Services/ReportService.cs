@@ -22,6 +22,13 @@ namespace InventorySystem.Services
 
     public class ReportService
     {
+        // Weighed lines store quantity 1 and the grams sold in weight_grams; normal lines store pieces.
+        // Quantity in sale units (kg for weighed lines) and the cost of that quantity.
+        // "* 1.0" keeps the column decimal: the first row's type decides the DataTable column type,
+        // so a whole-number first row would otherwise cut 0.250 kg down to 0.
+        private const string QtyExpr = "(CASE WHEN COALESCE(oi.weight_grams, 0) > 0 THEN oi.weight_grams / 1000.0 ELSE oi.quantity * 1.0 END)";
+        private const string CostExpr = "(" + QtyExpr + " * COALESCE(p.purchase_price, 0))";
+
         private const string CompletedOrdersFilter =
             "o.status IS NOT NULL AND o.status NOT IN ('Draft', 'Quotation')";
 
@@ -53,7 +60,7 @@ namespace InventorySystem.Services
                 new SqliteParameter("@to", to));
 
             decimal totalCost = DatabaseHelper.ExecuteScalar<decimal>($@"
-                SELECT COALESCE(SUM(oi.quantity * COALESCE(p.purchase_price, 0)), 0)
+                SELECT COALESCE(SUM({CostExpr}), 0)
                 FROM order_items oi
                 INNER JOIN orders o ON oi.order_id = o.order_id
                 INNER JOIN parts p ON oi.part_id = p.id
@@ -126,10 +133,10 @@ namespace InventorySystem.Services
             string sql = $@"
                 SELECT
                     p.part_name AS product_name,
-                    SUM(oi.quantity) AS quantity_sold,
-                    AVG(oi.price) AS unit_price,
+                    SUM({QtyExpr}) AS quantity_sold,
+                    SUM(oi.quantity * oi.price) / NULLIF(SUM({QtyExpr}), 0) AS unit_price,
                     SUM(oi.quantity * oi.price) AS total_sales,
-                    SUM(oi.quantity * (oi.price - COALESCE(p.purchase_price, 0))) AS profit
+                    SUM(oi.quantity * oi.price - {CostExpr}) AS profit
                 FROM order_items oi
                 INNER JOIN orders o ON oi.order_id = o.order_id
                 INNER JOIN parts p ON oi.part_id = p.id
@@ -152,9 +159,10 @@ namespace InventorySystem.Services
             string sql = $@"
                 SELECT
                     COALESCE(c.category_name, 'Uncategorized') AS category_name,
-                    SUM(oi.quantity) AS quantity_sold,
+                    SUM(CASE WHEN COALESCE(oi.weight_grams, 0) > 0 THEN 0 ELSE oi.quantity END) AS quantity_sold,
+                    SUM(COALESCE(oi.weight_grams, 0)) / 1000.0 AS kg_sold,
                     SUM(oi.quantity * oi.price) AS total_sales,
-                    SUM(oi.quantity * (oi.price - COALESCE(p.purchase_price, 0))) AS profit
+                    SUM(oi.quantity * oi.price - {CostExpr}) AS profit
                 FROM order_items oi
                 INNER JOIN orders o ON oi.order_id = o.order_id
                 INNER JOIN parts p ON oi.part_id = p.id
@@ -181,11 +189,11 @@ namespace InventorySystem.Services
             string sql = $@"
                 SELECT
                     p.part_name AS product_name,
-                    SUM(oi.quantity) AS quantity_sold,
-                    AVG(oi.price) AS unit_price,
+                    SUM({QtyExpr}) AS quantity_sold,
+                    SUM(oi.quantity * oi.price) / NULLIF(SUM({QtyExpr}), 0) AS unit_price,
                     SUM(oi.quantity * oi.price) AS total_sales,
-                    SUM(oi.quantity * COALESCE(p.purchase_price, 0)) AS total_cost,
-                    SUM(oi.quantity * (oi.price - COALESCE(p.purchase_price, 0))) AS profit
+                    SUM({CostExpr}) AS total_cost,
+                    SUM(oi.quantity * oi.price - {CostExpr}) AS profit
                 FROM order_items oi
                 INNER JOIN orders o ON oi.order_id = o.order_id
                 INNER JOIN parts p ON oi.part_id = p.id
@@ -215,8 +223,10 @@ namespace InventorySystem.Services
                 SELECT
                     (SELECT COUNT(*) FROM orders o
                       WHERE date(o.order_date) BETWEEN date(@from) AND date(@to) AND {CompletedOrdersFilter}) AS order_count,
-                    (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi INNER JOIN orders o ON oi.order_id = o.order_id
+                    (SELECT COALESCE(SUM(CASE WHEN COALESCE(oi.weight_grams, 0) > 0 THEN 0 ELSE oi.quantity END), 0) FROM order_items oi INNER JOIN orders o ON oi.order_id = o.order_id
                       WHERE date(o.order_date) BETWEEN date(@from) AND date(@to) AND {CompletedOrdersFilter}) AS items_sold,
+                    (SELECT COALESCE(SUM(COALESCE(oi.weight_grams, 0)), 0) / 1000.0 FROM order_items oi INNER JOIN orders o ON oi.order_id = o.order_id
+                      WHERE date(o.order_date) BETWEEN date(@from) AND date(@to) AND {CompletedOrdersFilter}) AS kg_sold,
                     (SELECT COUNT(*) FROM orders o
                       WHERE date(o.order_date) BETWEEN date(@from) AND date(@to) AND {CompletedOrdersFilter}
                         AND LOWER(COALESCE(o.payment_status, 'Paid')) <> 'paid') AS unpaid_count,
@@ -239,13 +249,15 @@ namespace InventorySystem.Services
                 SELECT
                     p.part_name AS product_name,
                     COALESCE(c.category_name, 'Uncategorized') AS category_name,
-                    COALESCE(p.sell_by_weight, 0) AS sell_by_weight,
+                    CASE WHEN COALESCE(p.sell_by_weight, 0) = 1
+                           OR LOWER(COALESCE(p.unit_of_measure, '')) IN ('kg','g','gram','grams','kilo','kilogram','kilograms')
+                         THEN 1 ELSE 0 END AS sell_by_weight,
                     COALESCE(p.unit_of_measure, '') AS unit,
-                    SUM(oi.quantity) AS quantity_sold,
-                    AVG(oi.price) AS unit_price,
+                    SUM({QtyExpr}) AS quantity_sold,
+                    SUM(oi.quantity * oi.price) / NULLIF(SUM({QtyExpr}), 0) AS unit_price,
                     SUM(oi.quantity * oi.price) AS total_sales,
-                    SUM(oi.quantity * COALESCE(p.purchase_price, 0)) AS total_cost,
-                    SUM(oi.quantity * (oi.price - COALESCE(p.purchase_price, 0))) AS profit
+                    SUM({CostExpr}) AS total_cost,
+                    SUM(oi.quantity * oi.price - {CostExpr}) AS profit
                 FROM order_items oi
                 INNER JOIN orders o ON oi.order_id = o.order_id
                 INNER JOIN parts p ON oi.part_id = p.id

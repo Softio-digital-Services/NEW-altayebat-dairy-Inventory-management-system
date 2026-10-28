@@ -108,6 +108,7 @@ namespace InventorySystem
 
                 // Initialize currency tables and load cached rates
                 InventorySystem.Services.CurrencyService.EnsureTable();
+                SchemaReady.Set();
 
                 // Check License
                 if (!InventorySystem.Helpers.LicenseManager.HasValidLicense())
@@ -596,6 +597,12 @@ namespace InventorySystem
             }
         }
 
+        /// <summary>Set once the database schema exists; the web server waits for it before serving requests.</summary>
+        private static readonly System.Threading.ManualResetEventSlim SchemaReady = new System.Threading.ManualResetEventSlim(false);
+
+        /// <summary>Uploaded product images live with the user data (not the install folder, which updates replace).</summary>
+        private static string ProductImagesDir => System.IO.Path.Combine(DatabaseConfig.DataRoot, "Images", "Products");
+
         private static void StartApiServer()
         {
             try
@@ -723,6 +730,27 @@ namespace InventorySystem
 
                 // Serve desktop assets to the web portal
                 string assetsPath = System.IO.Path.Combine(builder.Environment.ContentRootPath, "Assets");
+
+                // Product images: kept in the user data folder so updates/reinstalls don't delete them.
+                // Same URL (/Assets/Products/...) so saved image paths keep working.
+                try
+                {
+                    System.IO.Directory.CreateDirectory(ProductImagesDir);
+                    string legacyImages = System.IO.Path.Combine(assetsPath, "Products");
+                    if (System.IO.Directory.Exists(legacyImages))
+                        foreach (var f in System.IO.Directory.GetFiles(legacyImages))
+                        {
+                            string dest = System.IO.Path.Combine(ProductImagesDir, System.IO.Path.GetFileName(f));
+                            if (!System.IO.File.Exists(dest)) System.IO.File.Copy(f, dest);
+                        }
+                    app.UseStaticFiles(new Microsoft.AspNetCore.Builder.StaticFileOptions
+                    {
+                        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(ProductImagesDir),
+                        RequestPath = "/Assets/Products"
+                    });
+                }
+                catch (Exception ex) { ErrorLogger.LogError(ex, "Product images folder"); }
+
                 if (System.IO.Directory.Exists(assetsPath))
                 {
                     app.UseStaticFiles(new Microsoft.AspNetCore.Builder.StaticFileOptions
@@ -1158,7 +1186,7 @@ namespace InventorySystem
                         string ext = System.IO.Path.GetExtension(file.FileName);
                         if (string.IsNullOrWhiteSpace(ext)) ext = ".png";
                         string relDir = "Assets/Products";
-                        string absDir = System.IO.Path.Combine(appRoot, "Assets", "Products");
+                        string absDir = ProductImagesDir;
                         System.IO.Directory.CreateDirectory(absDir);
                         string name = Guid.NewGuid().ToString("N") + ext.ToLowerInvariant();
                         string abs = System.IO.Path.Combine(absDir, name);
@@ -1194,6 +1222,7 @@ namespace InventorySystem
                                 Quantity = item.Qty,
                                 UnitPrice = item.Price,
                                 StockDeductQty = item.StockQty > 0 ? item.StockQty : 0,
+                                WeightGrams = item.WeightKg > 0 ? (int)Math.Round(item.WeightKg * 1000m) : 0,
                                 SkipStock = item.SkipStock || item.Id <= 0
                             });
                         }
@@ -1588,6 +1617,7 @@ namespace InventorySystem
                             totalUnpaidMilkExpenses = s.TotalUnpaidMilkExpenses,
                             orderCount = act != null ? Convert.ToInt32(act["order_count"]) : 0,
                             itemsSold = act != null ? Convert.ToDecimal(act["items_sold"]) : 0m,
+                            kgSold = act != null ? Convert.ToDecimal(act["kg_sold"]) : 0m,
                             unpaidCount = act != null ? Convert.ToInt32(act["unpaid_count"]) : 0,
                             unpaidTotal = act != null ? Convert.ToDecimal(act["unpaid_total"]) : 0m,
                             returnsCount = act != null ? Convert.ToInt32(act["returns_count"]) : 0,
@@ -3588,6 +3618,8 @@ namespace InventorySystem
 
                 // Ports are configured via Kestrel above
                 InventorySystem.Helpers.StartupTrace.Mark("api: running");
+                // Don't answer requests before the tables exist (first launch on a new PC)
+                SchemaReady.Wait(TimeSpan.FromSeconds(60));
                 app.Run();
             }
             catch (Exception ex)

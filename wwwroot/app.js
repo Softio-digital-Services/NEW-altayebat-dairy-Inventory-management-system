@@ -14,7 +14,9 @@ const T = {
         milk_record_production: 'Record what was made', milk_process_btn: 'Process', milk_raw_stock: 'Raw milk in stock',
         milk_total_received: 'Milk received', milk_total_used: 'Milk processed', milk_no_intakes: 'No milk with liters left. Record milk intake in Expenses.',
         milk_no_productions: 'Nothing made yet.', milk_left: 'L left', milk_confirm_delete: 'Delete this production? The quantity made will be removed from stock.',
-        milk_from: 'From',
+        milk_from: 'From', weight_in_kg: 'Weight in kilograms (kg)', grams_eq: '= {0} g',
+        adjust_kg: 'Change (kg, + or −)', qty_kg: 'Qty (kg)', kg_sold: 'Sold by weight',
+        weight_line: 'Weighed item',
         rep_activity: 'Activity in this period',
         rep_trend: 'Sales vs expenses',
         rep_trend_daily: 'Sales vs expenses per day',
@@ -297,8 +299,8 @@ const T = {
         weight_guide_2: 'Set Stock (g) in grams (example: 5000 = 5 kg on the shelf, 1000 g = 1 kg).',
         weight_guide_3: 'At POS: Weigh → enter kg or Read scale → Add to cart.',
         price_per_kg: 'Price / kg', price_per_kg_hint: 'Enter the price of 1 kg. POS multiplies by the weighed amount.',
-        stock_grams: 'Stock (g)', low_level_grams: 'Low level (g)',
-        stock_grams_hint: 'Enter stock in grams (g). Details: 1000 g = 1 kg | 5000 g = 5 kg | 1250 g = 1.250 kg.',
+        stock_grams: 'Stock (kg)', low_level_grams: 'Low level (kg)',
+        stock_grams_hint: 'Type kilograms. Example: 1.250 = 1 kg 250 g | 5 = 5 kg | 0.5 = 500 g',
         stock_units_hint: 'How many units on the shelf (pieces, boxes, or packs).',
         uom_piece_hint: 'pcs / box / pack — price is for one unit',
         uom_weight_hint: 'Locked to g (grams). Price is per kg; stock is entered in grams (g) (1000 g = 1 kg).',
@@ -311,11 +313,11 @@ const T = {
         per_kg: '/kg',
         scale_pick_product: 'Tap a weight product in the POS to weigh it',
         scale_in_stock: 'In stock',
-        scale_weight_lbl: 'Weight (g)', scale_price_lbl: 'Price', scale_price_hint: 'Type a price to calculate the weight',
+        scale_weight_lbl: 'Weight (kg)', scale_price_lbl: 'Price', scale_price_hint: 'Type a price to calculate the weight',
         scale_read: 'Read scale', scale_add_cart: 'Add to cart',
         scale_selected: 'Selected',
-        scale_manual_hint: 'Enter grams (g). Example: 1000 = 1.000 kg | 1250 = 1.250 kg',
-        scale_offline_manual: 'Enter grams (g). Example: 1000 = 1.000 kg | 1250 = 1.250 kg',
+        scale_manual_hint: 'Type kilograms. Example: 0.250 = 250 g | 1.5 = 1 kg 500 g',
+        scale_offline_manual: 'Scale offline: type kilograms. Example: 0.250 = 250 g',
         scale_offline: 'Scale offline',
         scale_online: 'Scale online',
         scale_unstable: 'Scale unstable',
@@ -413,7 +415,9 @@ const T = {
         milk_record_production: 'تسجيل ما تم تصنيعه', milk_process_btn: 'تصنيع', milk_raw_stock: 'الحليب الخام في المخزون',
         milk_total_received: 'الحليب المستلم', milk_total_used: 'الحليب المصنّع', milk_no_intakes: 'لا يوجد حليب متبقٍ. سجّل استلام الحليب من المصروفات.',
         milk_no_productions: 'لم يتم تصنيع شيء بعد.', milk_left: 'لتر متبقي', milk_confirm_delete: 'حذف عملية التصنيع؟ سيتم خصم الكمية المصنّعة من المخزون.',
-        milk_from: 'من',
+        milk_from: 'من', weight_in_kg: 'الوزن بالكيلوغرام (كغ)', grams_eq: '= {0} غ',
+        adjust_kg: 'التغيير (كغ، + أو −)', qty_kg: 'الكمية (كغ)', kg_sold: 'المباع بالوزن',
+        weight_line: 'صنف موزون',
         rep_activity: 'النشاط في هذه الفترة',
         rep_trend: 'المبيعات مقابل المصاريف',
         rep_trend_daily: 'المبيعات مقابل المصاريف يومياً',
@@ -693,8 +697,8 @@ const T = {
         weight_guide_2: 'ضع المخزون (غ) بالغرام (مثال: 5000 = 5 كغ على الرف، 1000 غ = 1 كغ).',
         weight_guide_3: 'في نقطة البيع: وزن → أدخل الكغ أو اقرأ الميزان → أضف للسلة.',
         price_per_kg: 'السعر / كغ', price_per_kg_hint: 'أدخل سعر 1 كغ. نقطة البيع تضربه بالوزن.',
-        stock_grams: 'المخزون (غ)', low_level_grams: 'الحد الأدنى (غ)',
-        stock_grams_hint: 'أدخل المخزون بالغرام (غ). التفاصيل: 1000 غ = 1 كغ | 5000 غ = 5 كغ | 1250 غ = 1.250 كغ.',
+        stock_grams: 'المخزون (كغ)', low_level_grams: 'الحد الأدنى (كغ)',
+        stock_grams_hint: 'اكتب بالكيلوغرام. مثال: 1.250 = 1 كغ و250 غ | 5 = 5 كغ | 0.5 = 500 غ',
         stock_units_hint: 'عدد الوحدات على الرف (قطع أو علب أو عبوات).',
         uom_piece_hint: 'قطعة / علبة / عبوة — السعر لوحدة واحدة',
         uom_weight_hint: 'مثبت على غرام (غ). السعر لكل كغ؛ المخزون أدناه بالغرام (غ) (1000 غ = 1 كغ).',
@@ -707,11 +711,11 @@ const T = {
         per_kg: '/كغ',
         scale_pick_product: 'اضغط على منتج بالوزن في نقطة البيع لوزنه',
         scale_in_stock: 'المتوفر',
-        scale_weight_lbl: 'الوزن (غ)', scale_price_lbl: 'السعر', scale_price_hint: 'اكتب السعر لحساب الوزن',
+        scale_weight_lbl: 'الوزن (كغ)', scale_price_lbl: 'السعر', scale_price_hint: 'اكتب السعر لحساب الوزن',
         scale_read: 'قراءة الميزان', scale_add_cart: 'إضافة للسلة',
         scale_selected: 'المحدد',
-        scale_manual_hint: 'أدخل الغرام (غ). مثال: 1000 = 1.000 كغ | 1250 = 1.250 كغ',
-        scale_offline_manual: 'أدخل الغرام (غ). مثال: 1000 = 1.000 كغ | 1250 = 1.250 كغ',
+        scale_manual_hint: 'اكتب بالكيلوغرام. مثال: 0.250 = 250 غ | 1.5 = 1 كغ و500 غ',
+        scale_offline_manual: 'الميزان غير متصل: اكتب بالكيلوغرام. مثال: 0.250 = 250 غ',
         scale_offline: 'الميزان غير متصل',
         scale_online: 'الميزان متصل',
         scale_unstable: 'الميزان غير مستقر',
@@ -872,6 +876,33 @@ function productPriceTiers(p) {
     if (!p) return [0];
     const tiers = [Number(p.price) || 0, Number(p.price2) || 0, Number(p.price3) || 0, Number(p.price4) || 0];
     return tiers;
+}
+
+// Weight products: stored in grams, always shown and typed in kg.
+const gramsToKg = (g) => (Number(g) || 0) / 1000;
+const kgToGrams = (kg) => Math.round((Number(kg) || 0) * 1000);
+const kgText = (kg) => `${(Number(kg) || 0).toFixed(3)} ${tr('unit_kg')}`;
+const fmtKg = (grams) => kgText(gramsToKg(grams));
+const gramsEqText = (kg) => tr('grams_eq').replace('{0}', kgToGrams(kg).toLocaleString('en-US'));
+// Live "= 1,250 g" note under a kg field (created on demand right after the input)
+function attachGramsHint(input) {
+    if (!input || input.dataset.gramsHint) return;
+    input.dataset.gramsHint = '1';
+    const hint = document.createElement('small');
+    hint.className = 'grams-eq-hint';
+    input.insertAdjacentElement('afterend', hint);
+    const upd = () => { hint.textContent = input.dataset.kgField === '1' && input.value !== '' ? gramsEqText(input.value) : ''; };
+    input.addEventListener('input', upd);
+    input._gramsHintUpdate = upd;
+    upd();
+}
+function setKgField(input, on) {
+    if (!input) return;
+    input.dataset.kgField = on ? '1' : '';
+    input.step = on ? '0.001' : '1';
+    input.inputMode = on ? 'decimal' : 'numeric';
+    attachGramsHint(input);
+    input._gramsHintUpdate?.();
 }
 
 function isSellByWeight(p) {
@@ -1342,8 +1373,7 @@ function formatPosStock(p) {
     if (p.isService || p.itemType === 'Service') return tr('type_service');
     if (!isPosProductAvailable(p)) return tr('out_of_stock');
     if (isSellByWeight(p)) {
-        const kg = posStockLeft(p) / 1000;
-        return `${kg.toFixed(3)} ${tr('unit_kg')}`;
+        return fmtKg(posStockLeft(p));
     }
     if (p.isStockTracked === false) return `${p.stock} ${tr('col_stock').toLowerCase()}`;
     return `${posStockLeft(p)} ${tr('col_stock').toLowerCase()}`;
@@ -1765,7 +1795,16 @@ function closeModal(id) {
     }
     const modal = document.getElementById(id);
     if (!modal) return;
+    const wasActive = modal.classList.contains('active');
     modal.classList.remove('active');
+    // Closing the product form while importing from a supplier cancels that queued item
+    if (id === 'product-modal' && wasActive && fsImportQueue?.awaitingSave)
+        onFsImportProductCancelled();
+    // Closing the scale popup takes the product off the scale
+    if (id === 'scale-modal' && wasActive && scaleManager.getSelectedProduct()) {
+        scaleManager.clearSelectedProduct();
+        renderPOS();
+    }
 }
 
 function toast(msg, type = '') {
@@ -2505,7 +2544,11 @@ function renderAll() {
     try { renderDashboard(); } catch (e) { console.error(e); }
     try { renderInventory(); } catch (e) { console.error(e); }
     try { renderPOS(); } catch (e) { console.error(e); }
-    try { renderSales(); } catch (e) { console.error(e); }
+    try {
+        if (document.getElementById('sales')?.classList.contains('active') && salesRange)
+            loadSalesRange().then(renderSales).catch(() => {});
+        renderSales();
+    } catch (e) { console.error(e); }
     try { renderReports(); } catch (e) { console.error(e); }
     try { renderHistory(); } catch (e) { console.error(e); }
     try { renderQuotations(); } catch (e) { console.error(e); }
@@ -2855,7 +2898,7 @@ function renderInventory() {
                 <td>${escapeHtml(p.barcode || '—')}</td>
                 <td>${escapeHtml(p.category || '—')}</td>
                 <td>${isSellByWeight(p) ? formatPosPrice(p) : money(p.price)}</td>
-                <td>${p.isStockTracked === false ? '—' : (isSellByWeight(p) ? `${((Number(p.stock)||0)/1000).toFixed(3)} ${tr('unit_kg')}` : p.stock)}</td>
+                <td>${p.isStockTracked === false ? '—' : (isSellByWeight(p) ? fmtKg(p.stock) : p.stock)}</td>
                 <td>${p.minStock ?? 0}</td>
                 <td>${escapeHtml(p.location || '—')}</td>
                 <td>${stockBadge(p)}${isSellByWeight(p) ? ` <span class="badge badge-weight">${tr('weight_badge')}</span>` : ''}</td>
@@ -2885,7 +2928,7 @@ function renderInventory() {
                 ${productThumb(p).replace('inv-thumb', 'inv-thumb inv-card-img')}
                 <h3 title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</h3>
                 <div class="inv-card-meta" title="${escapeHtml(p.sku || '—')} · ${escapeHtml(p.category || '—')}">${escapeHtml(p.sku || '—')} · ${escapeHtml(p.category || '—')}</div>
-                <div class="inv-card-meta">${tr('col_stock')}: ${p.isStockTracked === false ? '—' : (isSellByWeight(p) ? `${((Number(p.stock)||0)/1000).toFixed(3)} ${tr('unit_kg')}` : p.stock)}</div>
+                <div class="inv-card-meta">${tr('col_stock')}: ${p.isStockTracked === false ? '—' : (isSellByWeight(p) ? fmtKg(p.stock) : p.stock)}</div>
                 <div class="price">${isSellByWeight(p) ? formatPosPrice(p) : money(p.price)}</div>
                 <div class="inv-card-badges">
                     ${isSellByWeight(p) ? `<span class="badge badge-weight">${tr('weight_badge')}</span>` : ''}
@@ -2968,6 +3011,7 @@ function renderReports() {
     const acts = [
         { label: tr('rep_orders'), value: orders.toLocaleString() },
         { label: tr('rep_items_sold'), value: repQty(s.itemsSold) },
+        { label: tr('kg_sold'), value: kgText(s.kgSold) },
         { label: tr('rep_unpaid_sales'), value: money(s.unpaidTotal), sub: fmtTr('rep_unpaid_sales_sub', repNum(s.unpaidCount)), warn: repNum(s.unpaidTotal) > 0 },
         { label: tr('rep_returns'), value: money(s.returnsTotal), sub: fmtTr('rep_returns_sub', repNum(s.returnsCount)) },
         { label: tr('rep_milk_received'), value: repQty(s.totalMilkLiters) + ' ' + tr('unit_l'), sub: money(s.totalMilkExpenses) },
@@ -3056,7 +3100,7 @@ function reportTableConfig() {
         cols: [
             { key: 'product_name', label: tr('col_name'), text: true },
             { key: 'category_name', label: tr('col_category'), text: true },
-            { key: 'quantity_sold', label: tr('col_qty'), fmt: (v, r) => repQty(v) + (r.unit ? ' ' + escapeHtml(r.unit) : ''), total: true, totalFmt: repQty },
+            { key: 'quantity_sold', label: tr('col_qty'), fmt: (v, r) => Number(r.sell_by_weight) ? kgText(v) : repQty(v) + (r.unit ? ' ' + escapeHtml(r.unit) : '') },
             { key: 'unit_price', label: tr('rep_avg_price'), fmt: money },
             { key: 'total_sales', label: tr('col_sales'), fmt: money, total: true },
             { key: 'total_cost', label: tr('rep_cost_col'), fmt: money, total: true },
@@ -3070,7 +3114,8 @@ function reportTableConfig() {
         search: ['category_name'],
         cols: [
             { key: 'category_name', label: tr('col_category'), text: true },
-            { key: 'quantity_sold', label: tr('col_qty'), fmt: repQty, total: true },
+            { key: 'quantity_sold', label: tr('rep_items_sold'), fmt: repQty, total: true },
+            { key: 'kg_sold', label: tr('kg_sold'), fmt: v => repNum(v) ? kgText(v) : '—', total: true, totalFmt: v => kgText(v) },
             { key: 'total_sales', label: tr('col_sales'), fmt: money, total: true },
             { key: 'profit', label: tr('col_profit'), fmt: money, total: true },
             { key: 'share', label: tr('rep_share'), fmt: v => `<div class="rep-share"><span style="width:${Math.round(v * 100)}%"></span></div><span class="rep-share-txt">${repPct(v)}</span>` }
@@ -3474,13 +3519,15 @@ function renderCart() {
                     <strong class="cart-line-total">${posMoney(item.price * item.qty)}</strong>
                 </div>
                 <div class="cart-item-controls">
-                    <div class="qty-controls">
+                    ${item.weighted && item.weightKg ? `<div class="qty-controls cart-weight-chip" title="${escapeHtml(tr('weight_line'))}">
+                        <span class="material-symbols-rounded">scale</span>${escapeHtml(kgText(item.weightKg))}
+                    </div>` : `<div class="qty-controls">
                         <button type="button" data-qty="${i}" data-d="-1">−</button>
                         <input type="number" class="cart-qty-input" data-qty-input="${i}" min="${minVal}" step="${stepVal}" value="${formattedQty}">
                         <button type="button" data-qty="${i}" data-d="1">+</button>
-                    </div>
+                    </div>`}
                     <div class="cart-price-wrap">
-                        <select class="cart-tier" data-tier="${i}" title="${tr('prices')}">${tierOpts}</select>
+                        ${item.weighted && item.weightKg ? '' : `<select class="cart-tier" data-tier="${i}" title="${tr('prices')}">${tierOpts}</select>`}
                         <input type="number" class="cart-price-input" data-price="${i}" min="0.01" step="0.01" value="${Number(item.price).toFixed(2)}">
                     </div>
                     <button type="button" class="cart-remove" data-rm="${i}" title="${tr('remove_line')}"><span class="material-symbols-rounded">delete</span></button>
@@ -4950,19 +4997,6 @@ async function openReturn(orderId) {
     } catch (e) { toast(e.message, 'error'); }
 }
 
-function openModal(id) { document.getElementById(id).classList.add('active'); }
-function closeModal(id) {
-    const wasActive = document.getElementById(id)?.classList.contains('active');
-    document.getElementById(id).classList.remove('active');
-    if (id === 'product-modal' && wasActive && fsImportQueue?.awaitingSave)
-        onFsImportProductCancelled();
-    // Closing the scale popup takes the product off the scale
-    if (id === 'scale-modal' && wasActive && scaleManager.getSelectedProduct()) {
-        scaleManager.clearSelectedProduct();
-        renderPOS();
-    }
-}
-
 function confirmDialog(message, options = {}) {
     const {
         title = tr('confirm_title'),
@@ -5257,8 +5291,8 @@ function setProductUomOptions(byWeight, preferred) {
     const prev = preferred != null ? preferred : uom.value;
     const isService = getProductTypeValue() === 'Service';
     if (byWeight) {
-        uom.innerHTML = '<option value="g">g (grams)</option>';
-        uom.value = 'g';
+        uom.innerHTML = `<option value="kg">${escapeHtml(tr('unit_kg'))} (kilogram)</option>`;
+        uom.value = 'kg';
         uom.disabled = true;
         if (addBtn) addBtn.hidden = true;
     } else {
@@ -5415,11 +5449,15 @@ function updateSellByWeightUI(preferredUom) {
     if (byWeight) {
         if (stockLabel) stockLabel.textContent = tr('stock_grams');
         if (minLabel) minLabel.textContent = tr('low_level_grams');
+        setKgField(document.getElementById('p-stock'), true);
+        setKgField(document.getElementById('p-min-stock'), true);
         if (stockHint) {
             stockHint.hidden = false;
             stockHint.textContent = tr('stock_grams_hint');
         }
     } else if (!isService) {
+        setKgField(document.getElementById('p-stock'), false);
+        setKgField(document.getElementById('p-min-stock'), false);
         updatePieceStockLabels();
     } else {
         if (stockLabel) stockLabel.textContent = tr('col_stock');
@@ -5483,8 +5521,9 @@ function buildProductPayload() {
         category: document.getElementById('p-category').value,
         price: Number(document.getElementById('p-price').value),
         cost: Number(document.getElementById('p-cost')?.value) || 0,
-        stock: tracked ? Number(document.getElementById('p-stock').value) || 0 : 0,
-        minStock: tracked ? Number(document.getElementById('p-min-stock')?.value) || 0 : 0,
+        // Weight products are typed in kg and stored in grams
+        stock: tracked ? (getSellByValue() === 'weight' ? kgToGrams(document.getElementById('p-stock').value) : Number(document.getElementById('p-stock').value) || 0) : 0,
+        minStock: tracked ? (getSellByValue() === 'weight' ? kgToGrams(document.getElementById('p-min-stock')?.value) : Number(document.getElementById('p-min-stock')?.value) || 0) : 0,
         barcode: document.getElementById('p-barcode').value.trim(),
         sku: document.getElementById('p-sku').value.trim(),
         image: document.getElementById('p-image')?.value || '',
@@ -5522,8 +5561,9 @@ function fillProductForm(p) {
     document.getElementById('p-price3').value = p.price3 ?? 0;
     document.getElementById('p-price4').value = p.price4 ?? 0;
     document.getElementById('p-cost').value = p.cost ?? 0;
-    document.getElementById('p-stock').value = p.stock ?? 0;
-    document.getElementById('p-min-stock').value = p.minStock ?? 0;
+    const pW = isSellByWeight(p);
+    document.getElementById('p-stock').value = pW ? gramsToKg(p.stock ?? 0) : (p.stock ?? 0);
+    document.getElementById('p-min-stock').value = pW ? gramsToKg(p.minStock ?? 0) : (p.minStock ?? 0);
     document.getElementById('p-barcode').value = p.barcode || '';
     document.getElementById('p-sku').value = p.sku || '';
     document.getElementById('p-location').value = p.location || '';
@@ -5604,13 +5644,19 @@ function openStockModal(id) {
     document.getElementById('stock-product-id').value = id;
     document.getElementById('stock-change').value = '';
     document.getElementById('stock-reason').value = '';
+    const w = isSellByWeight(p);
+    const lbl = document.getElementById('stock-change-label');
+    if (lbl) lbl.textContent = w ? tr('adjust_kg') : tr('col_stock');
+    setKgField(document.getElementById('stock-change'), w);
+    document.getElementById('stock-change').dataset.weight = w ? '1' : '';
     openModal('stock-modal');
 }
 
 async function submitStockAdjust(e) {
     e.preventDefault();
     const id = document.getElementById('stock-product-id').value;
-    const change = Number(document.getElementById('stock-change').value);
+    const changeEl = document.getElementById('stock-change');
+    const change = changeEl.dataset.weight === '1' ? kgToGrams(changeEl.value) : Number(changeEl.value);
     const reason = document.getElementById('stock-reason').value.trim();
     if (!id || !change) return;
     try {
@@ -7009,7 +7055,7 @@ function addBlindReturnProduct(p, qty = 1) {
     if (!p) return;
     const existing = blindReturnItems.find(x => x.partId === p.id);
     if (existing) existing.qty += qty;
-    else blindReturnItems.push({ partId: p.id, name: p.name, qty, price: Number(p.price) || 0 });
+    else blindReturnItems.push({ partId: p.id, name: p.name, qty: isSellByWeight(p) ? 1 : qty, price: Number(p.price) || 0, byWeight: isSellByWeight(p) });
     renderBlindReturnItems();
 }
 
@@ -7026,14 +7072,16 @@ function renderBlindReturnItems() {
             <div class="blind-line">
             <strong>${escapeHtml(it.name)}</strong>
             <span class="blind-price-tag">${money(it.price)}</span>
-            <input type="number" class="form-control" data-bq="${i}" min="1" step="1" value="${it.qty}" title="${tr('return_qty')}">
+            <input type="number" class="form-control" data-bq="${i}" min="${it.byWeight ? '0.001' : '1'}" step="${it.byWeight ? '0.001' : '1'}" value="${it.qty}" title="${escapeHtml(it.byWeight ? tr('qty_kg') : tr('return_qty'))}" placeholder="${it.byWeight ? tr('unit_kg') : ''}">
             <input type="number" class="form-control" data-bp="${i}" min="0.01" step="0.01" value="${Number(it.price).toFixed(2)}" title="${tr('unit_price')}">
             <button type="button" class="cart-remove" data-brm="${i}"><span class="material-symbols-rounded">delete</span></button>
         </div>`).join('');
     el.querySelectorAll('[data-bq]').forEach(inp => {
         inp.onchange = () => {
             const i = Number(inp.dataset.bq);
-            blindReturnItems[i].qty = Math.max(1, parseInt(inp.value, 10) || 1);
+            blindReturnItems[i].qty = blindReturnItems[i].byWeight
+                ? Math.max(0.001, Math.round((parseFloat(inp.value) || 0) * 1000) / 1000)
+                : Math.max(1, parseInt(inp.value, 10) || 1);
             renderBlindReturnItems();
         };
     });
@@ -7064,7 +7112,7 @@ async function submitBlindReturn() {
                 customerId: customerId ? Number(customerId) : null,
                 items: blindReturnItems.map(x => ({
                     partId: x.partId,
-                    qty: x.qty,
+                    qty: x.byWeight ? kgToGrams(x.qty) : x.qty, // stock for weight products is grams
                     refundAmount: x.price * x.qty
                 }))
             })
@@ -8860,10 +8908,8 @@ function scheduleLiveRefresh(delay = 400) {
     _liveRefreshTimer = setTimeout(async () => {
         try {
             await loadData({ fromSignalR: true });
-            // These pages keep their own lists outside loadData
-            const view = currentViewTarget();
-            if (view === 'sales') { await loadSalesRange(); renderSales(); }
-            if (view === 'milk-processing') await loadMilkProcessing();
+            // Milk processing keeps its own lists outside loadData (sales reloads in renderAll)
+            if (currentViewTarget() === 'milk-processing') await loadMilkProcessing();
         } catch (e) { console.error('live refresh', e); }
     }, delay);
 }
@@ -9026,13 +9072,13 @@ const scaleManager = {
 
     setManualWeight(kg) {
         const el = document.getElementById('scaleManualWeight');
-        if (el) el.value = Math.round(Number(kg || 0) * 1000);
+        if (el) el.value = Number(kg) > 0 ? (Math.round(Number(kg) * 1000) / 1000).toFixed(3) : '';
     },
 
     getManualWeight() {
         const el = document.getElementById('scaleManualWeight');
-        const g = Number(el?.value);
-        return Number.isFinite(g) ? Math.max(0, g / 1000) : 0;
+        const kg = Number(el?.value);
+        return Number.isFinite(kg) ? Math.max(0, Math.round(kg * 1000) / 1000) : 0;
     },
 
     onManualWeightInput() {
@@ -9134,10 +9180,9 @@ const scaleManager = {
     updateManualHint() {
         const hint = document.getElementById('scaleManualHint');
         if (!hint) return;
-        const g = Number(document.getElementById('scaleManualWeight')?.value || 0);
-        if (g > 0) {
-            const kg = (g / 1000).toFixed(3);
-            hint.textContent = `${g} g = ${kg} ${tr('unit_kg')}`;
+        const kg = this.getManualWeight();
+        if (kg > 0) {
+            hint.textContent = `${kgText(kg)} ${gramsEqText(kg)}`;
         } else {
             hint.textContent = scaleState.connected ? tr('scale_manual_hint') : tr('scale_offline_manual');
         }
@@ -9527,6 +9572,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         try { setupAppZoom(); } catch (e) { console.error('setupAppZoom', e); }
         try { setupNavOrder(); } catch (e) { console.error('setupNavOrder', e); }
         try { setupReportDetails(); } catch (e) { console.error('setupReportDetails', e); }
+        try { setupNumberFields(); } catch (e) { console.error('setupNumberFields', e); }
+        try { setupSupplierQtyUnit(); } catch (e) { console.error('setupSupplierQtyUnit', e); }
         try { setupSignalR(); } catch (e) { console.error('setupSignalR', e); }
         try { wirePrintSettingsUi(); } catch (e) { console.error('wirePrintSettingsUi', e); }
         try { await loadPrintSettings(); } catch { /* ignore */ }
@@ -9785,7 +9832,7 @@ function renderMilkProductList() {
     list.innerHTML = rows.length ? rows.map(p => `
         <div class="mp-product-item ${String(p.id) === selectedId ? 'selected' : ''}" data-mp-pick="${p.id}">
             <span class="mp-name">${escapeHtml(p.part_name)}</span>
-            <span class="mp-meta">${escapeHtml(p.category || '')}${p.unit ? ' • ' + escapeHtml(p.unit) : ''}</span>
+            <span class="mp-meta">${escapeHtml(p.category || '')}${(Number(p.by_weight) ? tr('unit_kg') : p.unit) ? ' • ' + escapeHtml(Number(p.by_weight) ? tr('unit_kg') : p.unit) : ''}</span>
         </div>`).join('') : `<div class="mp-product-empty">${escapeHtml(tr('milk_no_match'))}</div>`;
     list.querySelector('.mp-product-item.selected')?.scrollIntoView({ block: 'nearest' });
 }
@@ -9794,7 +9841,9 @@ function pickMilkProduct(id) {
     const p = milkProducts.find(x => String(x.id) === String(id));
     if (!p) return;
     document.getElementById('mp-product').value = p.id;
-    document.getElementById('mp-unit').textContent = p.unit ? `(${p.unit})` : '';
+    const unit = Number(p.by_weight) ? tr('unit_kg') : p.unit;
+    document.getElementById('mp-unit').textContent = unit ? `(${unit})` : '';
+    setKgField(document.getElementById('mp-made'), !!Number(p.by_weight));
     renderMilkProductList();
     document.getElementById('mp-made')?.focus();
 }
@@ -10031,4 +10080,47 @@ async function setupNavOrder() {
 function watchNavOrderLanguage() {
     document.getElementById('btn-lang')?.addEventListener('click', () => setTimeout(renderNavOrderEditor, 50));
     document.getElementById('btn-settings-lang')?.addEventListener('click', () => setTimeout(renderNavOrderEditor, 50));
+}
+
+/* ---------- Number fields: same behaviour in English and Arabic ---------- */
+const NUMBER_FIELD_SEL = 'input[type="number"], input[inputmode="decimal"], input[inputmode="numeric"], .pos-total-input, .scale-price-input';
+const isZeroValue = (v) => /^\s*0*([.,]0*)?\s*$/.test(String(v ?? '')) && String(v ?? '').trim() !== '';
+
+// Focusing a number field selects a zero (so typing replaces it) or puts the cursor at the end.
+function setupNumberFields() {
+    let justFocused = null;
+    document.addEventListener('focusin', e => {
+        const el = e.target;
+        if (!(el instanceof HTMLInputElement) || !el.matches(NUMBER_FIELD_SEL) || el.readOnly || el.disabled) return;
+        justFocused = el;
+        requestAnimationFrame(() => {
+            try {
+                if (isZeroValue(el.value)) el.select();
+                else if (el.type !== 'number') el.setSelectionRange(el.value.length, el.value.length);
+                else { const v = el.value; el.value = ''; el.value = v; } // number inputs: caret to end
+            } catch { /* some input types don't support selection */ }
+        });
+    });
+    // A click places the caret after focus; keep the zero selected
+    document.addEventListener('mouseup', e => {
+        if (e.target === justFocused && isZeroValue(justFocused.value)) { e.preventDefault(); justFocused.select(); }
+        justFocused = null;
+    });
+}
+
+/* ---------- Supplier purchase: quantity is kg for weight products ---------- */
+function setupSupplierQtyUnit() {
+    const upd = () => {
+        const lbl = document.getElementById('sp-qty-label');
+        if (!lbl) return;
+        const id = Number(document.getElementById('sp-part-id')?.value || 0);
+        const name = (document.getElementById('sp-name')?.value || '').trim().toLowerCase();
+        const p = products.find(x => (id && x.id === id) || (!id && name && String(x.name || '').trim().toLowerCase() === name));
+        const w = !!p && isSellByWeight(p);
+        lbl.textContent = w ? tr('qty_kg') : tr('col_qty');
+        setKgField(document.getElementById('sp-qty'), w);
+    };
+    document.getElementById('sp-name')?.addEventListener('input', upd);
+    document.getElementById('sp-qty')?.addEventListener('focus', upd);
+    document.getElementById('sp-suggest')?.addEventListener('click', () => setTimeout(upd, 0));
 }

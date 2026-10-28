@@ -417,6 +417,18 @@ namespace InventorySystem
                 // Custom / quick-sale line label (when part_id is null or name overridden)
                 if (!ColumnExists("order_items", "item_name")) ExecuteNonQuery("ALTER TABLE order_items ADD COLUMN item_name TEXT;");
                 if (!ColumnExists("order_items", "amount_paid")) ExecuteNonQuery("ALTER TABLE order_items ADD COLUMN amount_paid REAL DEFAULT 0;");
+                // Stock history written by returns (was referenced but never created)
+                ExecuteNonQuery(@"CREATE TABLE IF NOT EXISTS stock_movements (
+                        movement_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                        part_id       INTEGER,
+                        movement_type TEXT,
+                        quantity      REAL,
+                        performed_by  TEXT,
+                        notes         TEXT,
+                        movement_date TEXT DEFAULT (datetime('now'))
+                    );");
+                // Grams sold on weighed lines (quantity stays 1 for those); 0 for normal items
+                if (!ColumnExists("order_items", "weight_grams")) ExecuteNonQuery("ALTER TABLE order_items ADD COLUMN weight_grams INTEGER DEFAULT 0;");
 
                 ExecuteNonQuery(@"
                     CREATE TABLE IF NOT EXISTS supplier_purchase_items (

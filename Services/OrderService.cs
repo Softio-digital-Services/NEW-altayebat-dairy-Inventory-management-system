@@ -14,6 +14,8 @@ namespace InventorySystem.Services
         public int Quantity { get; set; }
         /// <summary>When &gt; 0, stock is reduced by this amount instead of Quantity (e.g. grams for weighed items).</summary>
         public int StockDeductQty { get; set; }
+        /// <summary>Grams sold on a weighed line (0 for normal items). Kept for reports and returns.</summary>
+        public int WeightGrams { get; set; }
         /// <summary>When true, sale is recorded but inventory is not reduced (car stock / quick sale).</summary>
         public bool SkipStock { get; set; }
         public decimal UnitPrice { get; set; }
@@ -273,12 +275,13 @@ namespace InventorySystem.Services
             object partId = item.PartId > 0 ? (object)item.PartId : DBNull.Value;
             string itemName = string.IsNullOrWhiteSpace(item.PartName) ? null : item.PartName.Trim();
             DatabaseHelper.ExecuteNonQuery(
-                "INSERT INTO order_items (order_id, part_id, quantity, price, item_name) VALUES (@oid, @pid, @qty, @price, @iname)",
+                "INSERT INTO order_items (order_id, part_id, quantity, price, item_name, weight_grams) VALUES (@oid, @pid, @qty, @price, @iname, @wg)",
                 new SqliteParameter("@oid", orderId),
                 new SqliteParameter("@pid", partId),
                 new SqliteParameter("@qty", item.Quantity),
                 new SqliteParameter("@price", item.UnitPrice),
-                new SqliteParameter("@iname", (object)itemName ?? DBNull.Value));
+                new SqliteParameter("@iname", (object)itemName ?? DBNull.Value),
+                new SqliteParameter("@wg", Math.Max(0, item.WeightGrams)));
         }
     }
 }

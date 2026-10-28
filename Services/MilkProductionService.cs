@@ -137,7 +137,10 @@ namespace InventorySystem.Services
         {
             return DatabaseHelper.ExecuteDataTable(
                 @"SELECT p.id, p.part_name, IFNULL(p.unit_of_measure, '') AS unit, IFNULL(c.category_name, '') AS category,
-                         IFNULL(p.barcode, '') AS barcode, IFNULL(p.part_number, '') AS part_number, p.quantity_in_stock
+                         IFNULL(p.barcode, '') AS barcode, IFNULL(p.part_number, '') AS part_number, p.quantity_in_stock,
+                         CASE WHEN COALESCE(p.sell_by_weight, 0) = 1
+                                OR LOWER(COALESCE(p.unit_of_measure, '')) IN ('kg','g','gram','grams','kilo','kilogram','kilograms')
+                              THEN 1 ELSE 0 END AS by_weight
                   FROM parts p
                   LEFT JOIN categories c ON c.id = p.category_id
                   WHERE p.date_deleted IS NULL AND IFNULL(p.is_inactive, 0) = 0
@@ -147,6 +150,17 @@ namespace InventorySystem.Services
         }
 
         // - Commands -
+
+        /// <summary>Weight products keep stock in grams; quantities typed in kg are converted.</summary>
+        private static decimal StockUnits(int partId, decimal quantity)
+        {
+            bool byWeight = DatabaseHelper.ExecuteScalar<int>(
+                @"SELECT CASE WHEN COALESCE(sell_by_weight, 0) = 1
+                               OR LOWER(COALESCE(unit_of_measure, '')) IN ('kg','g','gram','grams','kilo','kilogram','kilograms')
+                          THEN 1 ELSE 0 END FROM parts WHERE id = @id",
+                new SqliteParameter("@id", partId)) == 1;
+            return byWeight ? Math.Round(quantity * 1000m) : quantity;
+        }
 
         /// <summary>Record a production. Returns null on success, or an error message.</summary>
         public string AddProduction(int expenseId, int partId, decimal litersUsed, decimal quantityMade, string notes, string recordedBy = null)
@@ -178,7 +192,7 @@ namespace InventorySystem.Services
                         using (var cmd = new SqliteCommand(
                             "UPDATE parts SET quantity_in_stock = quantity_in_stock + @q WHERE id = @p", conn, tx))
                         {
-                            cmd.Parameters.AddWithValue("@q", quantityMade);
+                            cmd.Parameters.AddWithValue("@q", StockUnits(partId, quantityMade));
                             cmd.Parameters.AddWithValue("@p", partId);
                             cmd.ExecuteNonQuery();
                         }
@@ -215,7 +229,7 @@ namespace InventorySystem.Services
                     new SqliteParameter("@id", productionId));
                 DatabaseHelper.ExecuteNonQuery(
                     "UPDATE parts SET quantity_in_stock = quantity_in_stock - @q WHERE id = @p",
-                    new SqliteParameter("@q", qty),
+                    new SqliteParameter("@q", StockUnits(partId, qty)),
                     new SqliteParameter("@p", partId));
 
                 string partName = DatabaseHelper.ExecuteScalar<string>("SELECT part_name FROM parts WHERE id = @id", new SqliteParameter("@id", partId)) ?? "Unknown";
