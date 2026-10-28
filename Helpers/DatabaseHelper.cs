@@ -479,6 +479,8 @@ namespace InventorySystem
                            OR LOWER(COALESCE(unit_of_measure, '')) IN ('g','gram','grams','kilo','kilogram','kilograms')");
                     ExecuteNonQuery("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('migrate.weight_kg_v1', '1')");
                 }
+                // Same spelling everywhere ("Kg", "KG" -> "kg")
+                ExecuteNonQuery("UPDATE parts SET unit_of_measure = 'kg' WHERE LOWER(unit_of_measure) = 'kg' AND unit_of_measure <> 'kg'");
 
                 // Seed default dairy categories if empty
                 int catCount = ExecuteScalar<int>("SELECT COUNT(*) FROM expense_categories");

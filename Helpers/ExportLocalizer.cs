@@ -309,7 +309,7 @@ namespace InventorySystem.Helpers
             ["L"] = "ل",
             ["g"] = "غ",
             ["Bottle"] = "زجاجة",
-            ["Kg"] = "كغ",
+            ["kg"] = "كغ",
             ["Bag"] = "كيس",
             ["Tub"] = "علبة",
             ["Piece"] = "قطعة",

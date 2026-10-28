@@ -1047,7 +1047,7 @@ namespace InventorySystem.Services
                 if (!suppAll && !string.Equals(r["supplier_name"]?.ToString() ?? "", supplier, StringComparison.OrdinalIgnoreCase))
                     r.Delete();
             prods.AcceptChanges();
-            foreach (string drop in new[] { "production_id", "expense_id", "recorded_by" })
+            foreach (string drop in new[] { "production_id", "expense_id", "recorded_by", "by_weight" })
                 if (prods.Columns.Contains(drop)) prods.Columns.Remove(drop);
             MarkQuantity(prods, "liters_used", "quantity_made");
 
