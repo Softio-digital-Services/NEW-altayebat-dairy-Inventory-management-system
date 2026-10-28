@@ -306,12 +306,13 @@ namespace InventorySystem.Services
 
         private static int? FindPartIdByNameAndSupplier(string name, int supplierId)
         {
+            // Same name = same product: prefer this supplier's, else any (a product bought from a new
+            // supplier, or entered by hand, must not be created a second time)
             object result = DatabaseHelper.ExecuteScalar<object>(
                 @"SELECT id FROM parts
                   WHERE date_deleted IS NULL
                     AND LOWER(TRIM(part_name)) = LOWER(TRIM(@n))
-                    AND supplier_id = @sid
-                  ORDER BY id DESC LIMIT 1",
+                  ORDER BY (supplier_id = @sid) DESC, id DESC LIMIT 1",
                 new SqliteParameter("@n", name),
                 new SqliteParameter("@sid", supplierId));
             if (result == null || result == DBNull.Value) return null;
