@@ -468,6 +468,17 @@ namespace InventorySystem
                         recorded_by     TEXT,
                         date_deleted    TEXT
                     );");
+                // Once: weight products are typed and shown in kg. Productions recorded on the old "(g)" screen
+                // were typed in grams; convert them, then label every weight product "kg".
+                if (ExecuteScalar<int>("SELECT COUNT(*) FROM app_settings WHERE key = 'migrate.weight_kg_v1'") == 0)
+                {
+                    ExecuteNonQuery(@"UPDATE milk_production SET quantity_made = quantity_made / 1000.0
+                        WHERE part_id IN (SELECT id FROM parts WHERE LOWER(COALESCE(unit_of_measure, '')) IN ('g','gram','grams'))");
+                    ExecuteNonQuery(@"UPDATE parts SET unit_of_measure = 'kg'
+                        WHERE COALESCE(sell_by_weight, 0) = 1
+                           OR LOWER(COALESCE(unit_of_measure, '')) IN ('g','gram','grams','kilo','kilogram','kilograms')");
+                    ExecuteNonQuery("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('migrate.weight_kg_v1', '1')");
+                }
 
                 // Seed default dairy categories if empty
                 int catCount = ExecuteScalar<int>("SELECT COUNT(*) FROM expense_categories");

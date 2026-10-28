@@ -118,6 +118,9 @@ namespace InventorySystem.Services
         {
             string sql = @"
                 SELECT m.production_id, m.expense_id, m.production_date, p.part_name, IFNULL(p.unit_of_measure, '') AS unit,
+                       CASE WHEN COALESCE(p.sell_by_weight, 0) = 1
+                              OR LOWER(COALESCE(p.unit_of_measure, '')) IN ('kg','g','gram','grams','kilo','kilogram','kilograms')
+                            THEN 1 ELSE 0 END AS by_weight,
                        m.liters_used, m.quantity_made, m.notes, m.recorded_by, IFNULL(s.supplier_name, '') AS supplier_name
                 FROM milk_production m
                 LEFT JOIN parts p ON p.id = m.part_id

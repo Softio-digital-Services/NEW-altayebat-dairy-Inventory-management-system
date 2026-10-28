@@ -292,18 +292,18 @@ const T = {
         col_image: 'Image', col_min_stock: 'Min Stock', col_location: 'Location', col_cost: 'Cost', col_supplier: 'Supplier',
         item_type: 'Type', type_product: 'Product', type_service: 'Service',
         sell_by: 'How is this sold?', sell_by_piece: 'Fixed price — piece, box, or pack', sell_by_weight: 'By weight — price per kilogram',
-        sell_by_hint: 'Sold by weight: Price = $/kg. Stock in grams (5000 = 5 kg).',
+        sell_by_hint: 'Sold by weight: price is for 1 kg, stock is typed in kg (5 = 5 kg, 0.5 = 500 g).',
         sell_by_hint_piece: 'Pick the unit below (pcs / box / pack). Price is for one unit; stock is how many you have.',
         weight_guide_title: 'Weight product setup',
         weight_guide_1: 'Set Price / kg for this product (example: 40 = $40 for 1 kg).',
-        weight_guide_2: 'Set Stock (g) in grams (example: 5000 = 5 kg on the shelf, 1000 g = 1 kg).',
+        weight_guide_2: 'Type the stock in kg (example: 5 = 5 kg on the shelf, 0.250 = 250 g).',
         weight_guide_3: 'At POS: Weigh → enter kg or Read scale → Add to cart.',
         price_per_kg: 'Price / kg', price_per_kg_hint: 'Enter the price of 1 kg. POS multiplies by the weighed amount.',
         stock_grams: 'Stock (kg)', low_level_grams: 'Low level (kg)',
         stock_grams_hint: 'Type kilograms. Example: 1.250 = 1 kg 250 g | 5 = 5 kg | 0.5 = 500 g',
         stock_units_hint: 'How many units on the shelf (pieces, boxes, or packs).',
         uom_piece_hint: 'pcs / box / pack — price is for one unit',
-        uom_weight_hint: 'Locked to g (grams). Price is per kg; stock is entered in grams (g) (1000 g = 1 kg).',
+        uom_weight_hint: 'Locked to kg. Price is for 1 kg; stock and low level are typed in kg (0.250 = 250 g).',
         weigh_first: 'Product selected — enter kg or Read scale, then Add to cart',
         weigh_need_product: 'Press Weigh on a product first',
         weigh_need_scale: 'Enter a weight greater than 0',
@@ -690,18 +690,18 @@ const T = {
         col_image: 'الصورة', col_min_stock: 'الحد الأدنى', col_location: 'الموقع', col_cost: 'التكلفة', col_supplier: 'المورد',
         upload_image: 'رفع صورة', change_image: 'تغيير', remove_image: 'إزالة', item_type: 'النوع', type_product: 'منتج', type_service: 'خدمة',
         sell_by: 'كيف يُباع؟', sell_by_piece: 'سعر ثابت — قطعة أو علبة أو عبوة', sell_by_weight: 'بالوزن — السعر لكل كيلوغرام',
-        sell_by_hint: 'يباع بالوزن: السعر = $/كغ. المخزون بالغرام (5000 = 5 كغ).',
+        sell_by_hint: 'يباع بالوزن: السعر لكل 1 كغ، والمخزون يُكتب بالكيلوغرام (5 = 5 كغ، 0.5 = 500 غ).',
         sell_by_hint_piece: 'اختر الوحدة أدناه (قطعة / علبة / عبوة). السعر لوحدة واحدة؛ المخزون = الكمية المتوفرة.',
         weight_guide_title: 'إعداد منتج بالوزن',
         weight_guide_1: 'ضع السعر / كغ لهذا النوع (مثال: 40 = 40$ لكل 1 كغ).',
-        weight_guide_2: 'ضع المخزون (غ) بالغرام (مثال: 5000 = 5 كغ على الرف، 1000 غ = 1 كغ).',
+        weight_guide_2: 'اكتب المخزون بالكيلوغرام (مثال: 5 = 5 كغ على الرف، 0.250 = 250 غ).',
         weight_guide_3: 'في نقطة البيع: وزن → أدخل الكغ أو اقرأ الميزان → أضف للسلة.',
         price_per_kg: 'السعر / كغ', price_per_kg_hint: 'أدخل سعر 1 كغ. نقطة البيع تضربه بالوزن.',
         stock_grams: 'المخزون (كغ)', low_level_grams: 'الحد الأدنى (كغ)',
         stock_grams_hint: 'اكتب بالكيلوغرام. مثال: 1.250 = 1 كغ و250 غ | 5 = 5 كغ | 0.5 = 500 غ',
         stock_units_hint: 'عدد الوحدات على الرف (قطع أو علب أو عبوات).',
         uom_piece_hint: 'قطعة / علبة / عبوة — السعر لوحدة واحدة',
-        uom_weight_hint: 'مثبت على غرام (غ). السعر لكل كغ؛ المخزون أدناه بالغرام (غ) (1000 غ = 1 كغ).',
+        uom_weight_hint: 'مثبت على كغ. السعر لكل 1 كغ؛ المخزون والحد الأدنى يُكتبان بالكيلوغرام (0.250 = 250 غ).',
         weigh_first: 'تم اختيار المنتج — أدخل الكغ أو اقرأ الميزان ثم أضف للسلة',
         weigh_need_product: 'اضغط وزن على منتج أولاً',
         weigh_need_scale: 'أدخل وزناً أكبر من 0',
@@ -2899,7 +2899,7 @@ function renderInventory() {
                 <td>${escapeHtml(p.category || '—')}</td>
                 <td>${isSellByWeight(p) ? formatPosPrice(p) : money(p.price)}</td>
                 <td>${p.isStockTracked === false ? '—' : (isSellByWeight(p) ? fmtKg(p.stock) : p.stock)}</td>
-                <td>${p.minStock ?? 0}</td>
+                <td>${p.isStockTracked !== false && isSellByWeight(p) ? fmtKg(p.minStock ?? 0) : (p.minStock ?? 0)}</td>
                 <td>${escapeHtml(p.location || '—')}</td>
                 <td>${stockBadge(p)}${isSellByWeight(p) ? ` <span class="badge badge-weight">${tr('weight_badge')}</span>` : ''}</td>
                 <td>${canEdit ? actionBtns(`data-edit-product="${p.id}"`, `data-del-product="${p.id}"`,
@@ -9781,7 +9781,7 @@ function renderMilkProcessing() {
                 <td>${escapeHtml(p.supplier_name || '')}</td>
                 <td><strong>${escapeHtml(p.part_name || '')}</strong></td>
                 <td>${milkNum(p.liters_used)}</td>
-                <td>${milkNum(p.quantity_made)} ${escapeHtml(p.unit || '')}</td>
+                <td>${milkNum(p.quantity_made)} ${escapeHtml(Number(p.by_weight) ? tr('unit_kg') : (p.unit || ''))}</td>
                 <td>${escapeHtml(p.notes || '')}</td>
                 <td><button class="btn btn-secondary btn-sm" data-milk-delete="${p.production_id}" title="${escapeHtml(tr('delete'))}">
                     <span class="material-symbols-rounded">delete</span></button></td>
@@ -10105,6 +10105,16 @@ function setupNumberFields() {
     document.addEventListener('mouseup', e => {
         if (e.target === justFocused && isZeroValue(justFocused.value)) { e.preventDefault(); justFocused.select(); }
         justFocused = null;
+    });
+    // Backspace / Delete on a zero clears the field, wherever the cursor is (no hunting with the arrow keys)
+    document.addEventListener('keydown', e => {
+        const el = e.target;
+        if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+        if (!(el instanceof HTMLInputElement) || !el.matches(NUMBER_FIELD_SEL) || el.readOnly || el.disabled) return;
+        if (!isZeroValue(el.value)) return;
+        e.preventDefault();
+        el.value = '';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
     });
 }
 
